@@ -1,0 +1,218 @@
+/* studio.css — styling for the JAI Profile Studio app itself */
+
+:root {
+  --bg: #0e0e13;
+  --panel: #16161d;
+  --panel2: #1c1c26;
+  --border: #2a2a38;
+  --text: #eceaf4;
+  --muted: #8d8da1;
+  --accent: #8b5cf6;
+  --accent-soft: rgba(139, 92, 246, 0.15);
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* header */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 18px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.app-title { font-weight: 700; font-size: 1.05rem; letter-spacing: 0.3px; }
+.app-header-controls { display: flex; align-items: center; gap: 8px; }
+.preset-label { color: var(--muted); display: flex; align-items: center; gap: 6px; }
+
+button, select, input, textarea {
+  font: inherit;
+  color: var(--text);
+}
+select, input[type="text"], input[type="url"], input[type="number"], textarea {
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 9px;
+  outline: none;
+}
+select:focus, input:focus, textarea:focus { border-color: var(--accent); }
+
+button {
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel2);
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+button:hover { border-color: var(--accent); }
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+button.primary:hover { background: #7c4be0; }
+button.ghost { background: transparent; }
+
+/* main layout */
+.app-main { flex: 1; display: flex; min-height: 0; }
+
+.controls-panel {
+  width: 340px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  padding: 10px 14px 40px;
+}
+
+.preview-panel { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.preview-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 14px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+.mobile-toggle { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+#preview {
+  flex: 1;
+  border: none;
+  width: 100%;
+  background: #101014;
+  transition: max-width 0.25s ease;
+  margin: 0 auto;
+}
+#preview.mobile { max-width: 420px; border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+
+/* control groups */
+details.ctrl-group {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin: 10px 0;
+  background: var(--panel2);
+  overflow: hidden;
+}
+details.ctrl-group > summary {
+  cursor: pointer;
+  padding: 10px 12px;
+  font-weight: 600;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  user-select: none;
+}
+details.ctrl-group > summary::-webkit-details-marker { display: none; }
+details.ctrl-group > summary::after {
+  content: '▸';
+  margin-left: auto;
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+details.ctrl-group[open] > summary::after { transform: rotate(90deg); }
+details.ctrl-group > .group-body { padding: 4px 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+
+.ctrl-row { display: flex; align-items: center; gap: 8px; }
+.ctrl-row > label:first-child { flex: 1; color: var(--muted); }
+.ctrl-row input[type="text"], .ctrl-row input[type="url"], .ctrl-row select { flex: 1.4; min-width: 0; }
+.ctrl-row input[type="color"] {
+  width: 34px; height: 26px;
+  padding: 0; border: 1px solid var(--border); border-radius: 6px;
+  background: transparent; cursor: pointer;
+}
+.ctrl-row input[type="range"] { flex: 1.4; accent-color: var(--accent); }
+.ctrl-row .range-val { width: 42px; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ctrl-row input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px; }
+.ctrl-col { display: flex; flex-direction: column; gap: 5px; }
+.ctrl-col > label { color: var(--muted); }
+.ctrl-col textarea { resize: vertical; min-height: 64px; font-size: 0.82rem; }
+.hint { color: var(--muted); font-size: 0.72rem; line-height: 1.4; }
+
+/* export dialog */
+dialog#export-dialog {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  width: min(860px, 92vw);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  padding: 18px 20px;
+}
+dialog#export-dialog:not([open]) { display: none; }
+dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
+.dialog-head { display: flex; align-items: center; justify-content: space-between; }
+.dialog-head h2 { margin: 0; font-size: 1.1rem; }
+.dialog-hint { color: var(--muted); font-size: 0.82rem; }
+.dialog-hint code { background: var(--panel2); padding: 1px 5px; border-radius: 4px; }
+#export-output {
+  flex: 1;
+  min-height: 320px;
+  font-family: Consolas, monospace;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  white-space: pre;
+  overflow: auto;
+}
+.dialog-actions { display: flex; align-items: center; gap: 10px; margin-top: 12px; justify-content: flex-end; }
+.dialog-stats { margin-right: auto; color: var(--muted); font-size: 0.78rem; }
+
+/* import dialog */
+dialog#import-dialog {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  width: min(720px, 92vw);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  padding: 18px 20px;
+}
+dialog#import-dialog:not([open]) { display: none; }
+.import-steps { color: var(--muted); font-size: 0.85rem; line-height: 1.55; }
+.import-steps b { color: var(--text); }
+a.bookmarklet {
+  display: inline-block;
+  background: var(--accent-soft);
+  border: 1px dashed var(--accent);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 5px 12px;
+  margin: 0 6px;
+  text-decoration: none;
+  cursor: grab;
+  font-weight: 600;
+}
+#import-input {
+  min-height: 120px;
+  font-family: Consolas, monospace;
+  font-size: 0.72rem;
+  resize: vertical;
+}
+#import-status { margin-top: 8px; }
+
+/* scrollbars for the app */
+::-webkit-scrollbar { width: 9px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }

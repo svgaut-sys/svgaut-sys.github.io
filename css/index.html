@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JAI Profile Studio</title>
+<link rel="stylesheet" href="studio.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-title">🧼 JAI Profile Studio</div>
+    <div class="app-header-controls">
+      <label class="preset-label">Preset
+        <select id="preset-select">
+          <option value="">— choose —</option>
+        </select>
+      </label>
+      <button id="btn-random" class="ghost" title="Randomize the visual settings">🎲 Random</button>
+      <button id="btn-import" class="ghost" title="Import your real JanitorAI profile via bookmarklet">📥 My profile</button>
+      <button id="btn-load" class="ghost" title="Load a saved theme JSON">Load</button>
+      <button id="btn-save" class="ghost" title="Download theme as JSON">Save</button>
+      <button id="btn-reset" class="ghost" title="Reset to defaults">Reset</button>
+      <button id="btn-export" class="primary">Export CSS</button>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <aside id="controls" class="controls-panel"><!-- built by studio.js --></aside>
+    <section class="preview-panel">
+      <div class="preview-toolbar">
+        <span>Live preview — mock JanitorAI profile page</span>
+        <label class="mobile-toggle"><input type="checkbox" id="mobile-preview"> Mobile width</label>
+      </div>
+      <iframe id="preview" title="Profile preview"></iframe>
+    </section>
+  </main>
+
+  <dialog id="export-dialog">
+    <div class="dialog-head">
+      <h2>Export</h2>
+      <button id="dialog-close" class="ghost">✕</button>
+    </div>
+    <p class="dialog-hint">
+      Paste this whole block into your JanitorAI profile's <b>custom CSS</b> field
+      (Profile → Edit → Custom CSS). It includes the <code>&lt;style&gt;</code> tag and
+      any extra HTML blocks your theme uses.
+    </p>
+    <textarea id="export-output" readonly spellcheck="false"></textarea>
+    <div class="dialog-actions">
+      <span id="export-stats" class="dialog-stats"></span>
+      <button id="btn-copy" class="primary">Copy to clipboard</button>
+      <button id="btn-download" class="ghost">Download .css</button>
+    </div>
+  </dialog>
+
+  <dialog id="import-dialog">
+    <div class="dialog-head">
+      <h2>Import your JanitorAI profile</h2>
+      <button id="import-close" class="ghost">✕</button>
+    </div>
+    <div class="import-steps">
+      <p><b>1.</b> Drag this link into your bookmarks bar:
+        <a id="bookmarklet-link" class="bookmarklet" href="#">📋 Grab JAI profile</a>
+        <span class="hint">(or right-click → copy link, then add a bookmark and paste it as the URL)</span>
+      </p>
+      <p><b>2.</b> Open <b>your profile page</b> on janitorai.com and click the bookmark.
+        It reads the page you're looking at — name, follower count, member-since, avatar, your bots,
+        and any existing custom CSS — and copies it to your clipboard. Nothing is sent anywhere.</p>
+      <p><b>3.</b> Paste the result here:</p>
+    </div>
+    <textarea id="import-input" spellcheck="false" placeholder='{"v":1,"src":"jai-bookmarklet", ...}'></textarea>
+    <div id="import-status" class="dialog-stats"></div>
+    <div class="dialog-actions">
+      <button id="import-clear" class="ghost">Remove imported profile</button>
+      <button id="import-savecss" class="ghost" disabled>Backup existing CSS (.css)</button>
+      <button id="import-apply" class="primary">Apply to preview</button>
+    </div>
+  </dialog>
+
+  <input type="file" id="file-input" accept=".json" hidden>
+
+  <script src="preview.js"></script>
+  <script src="generator.js"></script>
+  <script src="presets.js"></script>
+  <script src="studio.js"></script>
+</body>
+</html>
