@@ -31,8 +31,7 @@
     { title: '🔤 Fonts', rows: [
       ['select', 'fonts.heading', 'Headings', FONT_OPTIONS],
       ['select', 'fonts.body', 'Body', FONT_OPTIONS],
-      ['check', 'fonts.import', 'Force Google Fonts @import for all fonts'],
-      ['hint', 'Most fonts in this list are natively available on JanitorAI (verified against the community @fonts showcase). The few that are not get a Google Fonts @import added to the export automatically — this toggle only forces the import for native ones too.'],
+      ['hint', 'Every font in this list is natively available on JanitorAI (verified against the community @fonts showcase). Other fonts can\'t be used — the site blocks @import.'],
     ]},
     { title: '⬜ Shape & glass', rows: [
       ['range', 'shape.radius', 'Corner radius', 0, 32, 1, 'px'],
@@ -44,8 +43,8 @@
       ['text', 'background.image', 'Image URL (optional)'],
       ['color', 'background.tint', 'Tint color'],
       ['range', 'background.tintAlpha', 'Tint strength', 0, 0.9, 0.05, ''],
-      ['select', 'background.effect', 'Effect layer', ['none', 'bubbles', 'scanlines', 'stars']],
-      ['hint', 'On the real site you can also set a profile background image in JanitorAI settings; the effect layer sits on top of it.'],
+      ['select', 'background.effect', 'Effect layer', ['none', 'bubbles', 'snow', 'petals', 'fireflies', 'embers', 'stars', 'rain', 'fog', 'scanlines', 'vaporgrid']],
+      ['hint', 'The image is delivered as an <img> layer because JanitorAI strips url() in CSS. You can also set a background in JanitorAI settings; the effect layer sits on top of either.'],
     ]},
     { title: '📌 Top bar', rows: [
       ['check', 'topbar.enabled', 'Restyle top bar'],
@@ -485,7 +484,7 @@
     state.shape.blur = Math.round(rndRange(6, 16));
     state.shape.borderAlpha = Math.round(rndRange(0.1, 0.4) * 20) / 20;
 
-    state.background.effect = rnd(['none', 'none', 'bubbles', 'scanlines', 'stars']);
+    state.background.effect = rnd(['none', 'none', 'bubbles', 'snow', 'petals', 'fireflies', 'embers', 'stars', 'rain', 'fog', 'scanlines', 'vaporgrid']);
     state.topbar.accentLine = Math.random() < 0.8;
     state.topbar.animateLine = Math.random() < 0.6;
     state.profile.titleEffect = rnd(['gradient', 'gradient', 'float', 'glitch', 'none']);

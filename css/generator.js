@@ -45,19 +45,18 @@ const GENERATOR = (() => {
     'Jacquard 24', 'Jim Nightshade', 'Lacquer', 'Lobster', 'Monoton', 'Oleo Script', 'Pacifico',
     'Pangolin', 'Petit Formal Script', 'Pirata One', 'Playpen Sans Hebrew', 'Rock Salt',
     'Rubik Glitch', 'Sigmar One', 'Sunshiney', 'Tagesschrift']);
-  // popular non-native extras (auto-@import on export)
-  addFonts('sans-serif', false, ['Quicksand', 'Nunito', 'Orbitron']);
-  addFonts('serif', false, ['Cormorant Garamond']);
+  // NOTE: JanitorAI blocks @import (per the community rulebook), so only
+  // natively-available fonts are offered — no non-native extras.
 
   function fontStack(name) {
     const f = FONTS[name];
     return `'${name}', ${f ? f.fallback : 'sans-serif'}`;
   }
 
-  /** Fonts needing @import in the export: non-native always; native only if forced. */
-  function fontImportURL(state, forPreview) {
-    const names = [...new Set([state.fonts.heading, state.fonts.body])]
-      .filter(n => FONTS[n] && (forPreview || !FONTS[n].native || state.fonts.import));
+  /** Google Fonts URL — used ONLY by the local preview (JanitorAI blocks @import
+      but ships all these fonts natively; our preview page has to fetch them). */
+  function fontImportURL(state) {
+    const names = [...new Set([state.fonts.heading, state.fonts.body])].filter(n => FONTS[n]);
     if (!names.length) return null;
     const families = names.map(n => `family=${FONTS[n].g}`).join('&');
     return `https://fonts.googleapis.com/css2?${families}&display=swap`;
@@ -76,31 +75,280 @@ ${s.misc.selection ? `::selection { background: ${c.accent}; color: ${c.pageBg};
 ${s.misc.cursor !== 'auto' ? `.pp-cc-wrapper, .gallery-item, a, button { cursor: ${s.misc.cursor} !important; }` : ''}`;
   }
 
+  /* Deterministic pseudo-random helper so particle layouts are stable per index. */
+  function seeded(i, off) {
+    const x = Math.sin(i * 127.1 + off * 311.7) * 43758.5453;
+    return x - Math.floor(x);
+  }
+
+  /** Per-particle rule builder: n spans with classes .p1..pn inside `sel`. */
+  function particleRules(sel, n, fn) {
+    let out = '';
+    for (let i = 1; i <= n; i++) out += `${sel} .p${i} { ${fn(i)} }\n`;
+    return out;
+  }
+
+  const PARTICLE_EFFECTS = ['bubbles', 'snow', 'petals', 'fireflies', 'embers'];
+
   function mBackground(s) {
     const b = s.background;
+    const c = s.colors;
     const parts = [];
+    // NOTE: JanitorAI strips url() in CSS, so a custom page background must be
+    // delivered as an <img> layer in the extra HTML (see buildHTML), never as
+    // a CSS background-image.
+    parts.push(`
+.pp-page-background {
+    background: ${c.pageBg} !important;
+}`);
     if (b.image) {
       parts.push(`
-.pp-page-background {
-    background: url('${b.image}') center / cover no-repeat fixed !important;
-}`);
-    } else {
-      parts.push(`
-.pp-page-background {
-    background: ${s.colors.pageBg} !important;
+.bg-image-layer {
+    position: fixed;
+    inset: 0;
+    z-index: -25;
+    overflow: hidden;
+    pointer-events: none;
+}
+.bg-image-layer img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }`);
     }
     if (b.tintAlpha > 0) {
       parts.push(`
-.pp-page-background::after {
-    content: '';
+.bg-tint-layer {
     position: fixed;
     inset: 0;
+    z-index: -22;
     background: ${rgba(b.tint, b.tintAlpha)};
     pointer-events: none;
 }`);
     }
-    if (b.effect === 'scanlines') {
+
+    const fx = b.effect;
+    if (PARTICLE_EFFECTS.includes(fx)) {
+      parts.push(`
+.fx-layer {
+    position: fixed;
+    inset: 0;
+    z-index: -20;
+    overflow: hidden;
+    pointer-events: none;
+}
+.fx-layer span { position: absolute; display: block; }`);
+    }
+
+    if (fx === 'bubbles') {
+      parts.push(`
+.fx-bubbles span {
+    bottom: -60px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%,
+        rgba(255,255,255,0.6), rgba(255,255,255,0.25) 40%, rgba(255,255,255,0.08) 70%);
+    border: 1px solid rgba(255,255,255,0.15);
+    animation: fx-rise 16s linear infinite;
+}
+${particleRules('.fx-bubbles', 8, i => {
+  const sz = Math.round(14 + seeded(i, 1) * 44);
+  return `left: ${Math.round(seeded(i, 2) * 92)}%; width: ${sz}px; height: ${sz}px; animation-duration: ${Math.round(13 + seeded(i, 3) * 14)}s; animation-delay: ${Math.round(seeded(i, 4) * 9)}s;`;
+})}
+@keyframes fx-rise {
+    0%   { transform: translateY(0) translateX(0) scale(1); opacity: 0; }
+    10%  { opacity: 0.7; }
+    50%  { transform: translateY(-50vh) translateX(15px) scale(1.1); }
+    90%  { opacity: 0.4; }
+    100% { transform: translateY(-110vh) translateX(-10px) scale(0.85); opacity: 0; }
+}`);
+    }
+
+    if (fx === 'snow') {
+      parts.push(`
+.fx-snow span {
+    top: -20px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,255,255,0.95), rgba(255,255,255,0.4) 70%);
+    animation: fx-snowfall linear infinite;
+}
+${particleRules('.fx-snow', 12, i => {
+  const sz = Math.round(3 + seeded(i, 1) * 7);
+  return `left: ${Math.round(seeded(i, 2) * 98)}%; width: ${sz}px; height: ${sz}px; opacity: ${(0.4 + seeded(i, 5) * 0.5).toFixed(2)}; animation-duration: ${Math.round(9 + seeded(i, 3) * 12)}s; animation-delay: ${(-seeded(i, 4) * 20).toFixed(1)}s;`;
+})}
+@keyframes fx-snowfall {
+    0%   { transform: translateY(-5vh) translateX(0); }
+    25%  { transform: translateY(25vh) translateX(24px); }
+    50%  { transform: translateY(52vh) translateX(-18px); }
+    75%  { transform: translateY(78vh) translateX(20px); }
+    100% { transform: translateY(108vh) translateX(-8px); }
+}`);
+    }
+
+    if (fx === 'petals') {
+      parts.push(`
+.fx-petals span {
+    top: -30px;
+    border-radius: 65% 35% 60% 40%;
+    background: linear-gradient(135deg, ${rgba(c.accent2, 0.9)}, ${rgba(c.accent2, 0.45)});
+    box-shadow: 0 0 6px ${rgba(c.accent2, 0.25)};
+    animation: fx-petalfall linear infinite;
+}
+${particleRules('.fx-petals', 10, i => {
+  const w = Math.round(10 + seeded(i, 1) * 10);
+  return `left: ${Math.round(seeded(i, 2) * 96)}%; width: ${w}px; height: ${Math.round(w * 0.75)}px; opacity: ${(0.5 + seeded(i, 5) * 0.4).toFixed(2)}; animation-duration: ${Math.round(10 + seeded(i, 3) * 10)}s; animation-delay: ${(-seeded(i, 4) * 18).toFixed(1)}s;`;
+})}
+@keyframes fx-petalfall {
+    0%   { transform: translateY(-5vh) translateX(0) rotate(0deg); }
+    30%  { transform: translateY(30vh) translateX(-45px) rotate(140deg); }
+    60%  { transform: translateY(62vh) translateX(25px) rotate(230deg); }
+    100% { transform: translateY(108vh) translateX(-30px) rotate(360deg); }
+}`);
+    }
+
+    if (fx === 'fireflies') {
+      parts.push(`
+.fx-fireflies span {
+    border-radius: 50%;
+    background: ${c.accent};
+    box-shadow: 0 0 8px 2px ${rgba(c.accent, 0.7)};
+    animation: fx-drift ease-in-out infinite alternate, fx-blink 3s ease-in-out infinite;
+}
+${particleRules('.fx-fireflies', 10, i => {
+  const sz = Math.round(3 + seeded(i, 1) * 4);
+  return `left: ${Math.round(5 + seeded(i, 2) * 88)}%; top: ${Math.round(8 + seeded(i, 6) * 80)}%; width: ${sz}px; height: ${sz}px; animation-duration: ${Math.round(6 + seeded(i, 3) * 8)}s, ${(2 + seeded(i, 7) * 3).toFixed(1)}s; animation-delay: ${(-seeded(i, 4) * 10).toFixed(1)}s, ${(seeded(i, 5) * 3).toFixed(1)}s;`;
+})}
+@keyframes fx-drift {
+    0%   { transform: translate(0, 0); }
+    33%  { transform: translate(45px, -35px); }
+    66%  { transform: translate(-30px, 25px); }
+    100% { transform: translate(25px, 45px); }
+}
+@keyframes fx-blink {
+    0%, 100% { opacity: 0.9; }
+    50% { opacity: 0.1; }
+}`);
+    }
+
+    if (fx === 'embers') {
+      parts.push(`
+.fx-embers span {
+    bottom: -20px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #ffd9a0, #ff7a3d 60%, rgba(255,90,40,0.4));
+    box-shadow: 0 0 6px 1px rgba(255, 122, 61, 0.6);
+    animation: fx-ember linear infinite;
+}
+${particleRules('.fx-embers', 11, i => {
+  const sz = Math.round(2 + seeded(i, 1) * 5);
+  return `left: ${Math.round(seeded(i, 2) * 96)}%; width: ${sz}px; height: ${sz}px; animation-duration: ${Math.round(6 + seeded(i, 3) * 8)}s; animation-delay: ${(-seeded(i, 4) * 12).toFixed(1)}s;`;
+})}
+@keyframes fx-ember {
+    0%   { transform: translateY(0) translateX(0) scale(1); opacity: 0; }
+    10%  { opacity: 0.9; }
+    50%  { transform: translateY(-55vh) translateX(22px) scale(0.9); opacity: 0.7; }
+    100% { transform: translateY(-108vh) translateX(-18px) scale(0.5); opacity: 0; }
+}`);
+    }
+
+    if (fx === 'stars') {
+      // Tiled star field: dots positioned inside a repeating background tile.
+      parts.push(`
+body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+        radial-gradient(1.6px 1.6px at 25px 35px, rgba(255,255,255,0.9), transparent),
+        radial-gradient(1px 1px at 110px 80px, rgba(255,255,255,0.7), transparent),
+        radial-gradient(2px 2px at 190px 140px, ${rgba(c.accent, 0.85)}, transparent),
+        radial-gradient(1.2px 1.2px at 60px 160px, rgba(255,255,255,0.6), transparent),
+        radial-gradient(1px 1px at 160px 30px, ${rgba(c.accent2, 0.7)}, transparent),
+        radial-gradient(1.4px 1.4px at 90px 120px, rgba(255,255,255,0.8), transparent);
+    background-size: 230px 190px;
+    pointer-events: none;
+    z-index: -18;
+    animation: fx-twinkle 4s ease-in-out infinite alternate;
+}
+body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+        radial-gradient(1px 1px at 45px 60px, rgba(255,255,255,0.5), transparent),
+        radial-gradient(1.3px 1.3px at 150px 20px, rgba(255,255,255,0.6), transparent),
+        radial-gradient(1px 1px at 220px 110px, ${rgba(c.accent, 0.5)}, transparent),
+        radial-gradient(1px 1px at 80px 170px, rgba(255,255,255,0.45), transparent);
+    background-size: 290px 240px;
+    pointer-events: none;
+    z-index: -18;
+    animation: fx-twinkle 6s ease-in-out infinite alternate-reverse;
+}
+@keyframes fx-twinkle {
+    from { opacity: 0.45; }
+    to { opacity: 1; }
+}`);
+    }
+
+    if (fx === 'rain') {
+      parts.push(`
+body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: linear-gradient(115deg,
+        transparent 44%,
+        rgba(180, 200, 224, 0.28) 48%,
+        rgba(180, 200, 224, 0.28) 51%,
+        transparent 55%);
+    background-size: 38px 110px;
+    pointer-events: none;
+    z-index: 9998;
+    opacity: 0.55;
+    animation: fx-rainfall 0.7s linear infinite;
+}
+body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: linear-gradient(115deg,
+        transparent 46%,
+        rgba(180, 200, 224, 0.18) 49%,
+        rgba(180, 200, 224, 0.18) 51%,
+        transparent 54%);
+    background-size: 24px 70px;
+    pointer-events: none;
+    z-index: 9998;
+    opacity: 0.4;
+    animation: fx-rainfall 0.45s linear infinite;
+}
+@keyframes fx-rainfall {
+    from { background-position: 0 0; }
+    to { background-position: -76px 220px; }
+}`);
+    }
+
+    if (fx === 'fog') {
+      parts.push(`
+body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: -50vw;
+    width: 200vw; height: 100vh;
+    background:
+        radial-gradient(ellipse 60vw 30vh at 30% 30%, ${rgba(c.text, 0.07)}, transparent 70%),
+        radial-gradient(ellipse 70vw 34vh at 70% 65%, ${rgba(c.text, 0.06)}, transparent 70%),
+        radial-gradient(ellipse 50vw 26vh at 50% 85%, ${rgba(c.accent, 0.05)}, transparent 70%);
+    pointer-events: none;
+    z-index: 9998;
+    animation: fx-fogdrift 26s ease-in-out infinite alternate;
+}
+@keyframes fx-fogdrift {
+    from { transform: translateX(0); }
+    to { transform: translateX(18vw); }
+}`);
+    }
+
+    if (fx === 'scanlines') {
       parts.push(`
 body::before {
     content: '';
@@ -113,59 +361,29 @@ body::before {
     z-index: 9999;
 }`);
     }
-    if (b.effect === 'stars') {
+
+    if (fx === 'vaporgrid') {
       parts.push(`
 body::before {
     content: '';
     position: fixed;
-    inset: 0;
+    left: -25vw; right: -25vw;
+    bottom: 0; height: 46vh;
     background-image:
-        radial-gradient(1.5px 1.5px at 20% 30%, ${rgba(s.colors.accent, 0.9)}, transparent),
-        radial-gradient(1px 1px at 70% 15%, rgba(255,255,255,0.8), transparent),
-        radial-gradient(2px 2px at 45% 70%, ${rgba(s.colors.accent2, 0.8)}, transparent),
-        radial-gradient(1px 1px at 85% 55%, rgba(255,255,255,0.7), transparent),
-        radial-gradient(1.5px 1.5px at 10% 80%, rgba(255,255,255,0.6), transparent),
-        radial-gradient(1px 1px at 60% 40%, ${rgba(s.colors.accent, 0.7)}, transparent);
+        linear-gradient(to top, ${rgba(c.accent, 0.35)} 1px, transparent 1px),
+        linear-gradient(to right, ${rgba(c.accent, 0.35)} 1px, transparent 1px);
+    background-size: 100% 42px, 64px 100%;
+    transform: perspective(320px) rotateX(58deg);
+    transform-origin: bottom center;
+    mask-image: linear-gradient(to top, #000 30%, transparent 95%);
+    -webkit-mask-image: linear-gradient(to top, #000 30%, transparent 95%);
     pointer-events: none;
-    z-index: -10;
-    animation: star-twinkle 4s ease-in-out infinite alternate;
+    z-index: -18;
+    animation: fx-gridscroll 3.5s linear infinite;
 }
-@keyframes star-twinkle {
-    from { opacity: 0.5; }
-    to { opacity: 1; }
-}`);
-    }
-    if (b.effect === 'bubbles') {
-      parts.push(`
-/* Bubble layer (pairs with the .fx-bubbles HTML block below the style tag) */
-.fx-bubbles {
-    position: fixed;
-    inset: 0;
-    z-index: -20;
-    overflow: hidden;
-    pointer-events: none;
-}
-.fx-bubbles .bubble {
-    position: absolute;
-    bottom: -60px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 30% 30%,
-        rgba(255,255,255,0.6), rgba(255,255,255,0.25) 40%, rgba(255,255,255,0.08) 70%);
-    border: 1px solid rgba(255,255,255,0.15);
-    animation: bubble-rise 16s linear infinite;
-}
-.fx-bubbles .b1 { left: 8%;  width: 28px; height: 28px; animation-duration: 18s; }
-.fx-bubbles .b2 { left: 24%; width: 46px; height: 46px; animation-duration: 22s; animation-delay: 3s; }
-.fx-bubbles .b3 { left: 40%; width: 18px; height: 18px; animation-duration: 14s; animation-delay: 1s; }
-.fx-bubbles .b4 { left: 55%; width: 38px; height: 38px; animation-duration: 20s; animation-delay: 5s; }
-.fx-bubbles .b5 { left: 70%; width: 24px; height: 24px; animation-duration: 16s; animation-delay: 2s; }
-.fx-bubbles .b6 { left: 84%; width: 52px; height: 52px; animation-duration: 25s; animation-delay: 7s; }
-@keyframes bubble-rise {
-    0%   { transform: translateY(0) translateX(0) scale(1); opacity: 0; }
-    10%  { opacity: 0.7; }
-    50%  { transform: translateY(-50vh) translateX(15px) scale(1.1); }
-    90%  { opacity: 0.4; }
-    100% { transform: translateY(-110vh) translateX(-10px) scale(0.85); opacity: 0; }
+@keyframes fx-gridscroll {
+    from { background-position: 0 0, 0 0; }
+    to { background-position: 0 42px, 0 0; }
 }`);
     }
     return parts.join('\n');
@@ -1043,13 +1261,21 @@ details.friends-gallery summary::-webkit-details-marker { display: none; }
 
   /* ---------------- Extra HTML blocks ---------------- */
 
+  const PARTICLE_COUNTS = { bubbles: 8, snow: 12, petals: 10, fireflies: 10, embers: 11 };
+
   function buildHTML(s) {
     const parts = [];
-    if (s.background.effect === 'bubbles') {
-      parts.push(`<div class="fx-bubbles">
-  <div class="bubble b1"></div><div class="bubble b2"></div><div class="bubble b3"></div>
-  <div class="bubble b4"></div><div class="bubble b5"></div><div class="bubble b6"></div>
-</div>`);
+    if (s.background.image) {
+      parts.push(`<div class="bg-image-layer"><img src="${escHtml(s.background.image)}" alt=""></div>`);
+    }
+    if (s.background.tintAlpha > 0) {
+      parts.push(`<div class="bg-tint-layer"></div>`);
+    }
+    const fx = s.background.effect;
+    if (PARTICLE_COUNTS[fx]) {
+      const spans = [];
+      for (let i = 1; i <= PARTICLE_COUNTS[fx]; i++) spans.push(`<span class="p${i}"></span>`);
+      parts.push(`<div class="fx-layer fx-${fx}">${spans.join('')}</div>`);
     }
     if (s.extras.banner.enabled && s.extras.banner.url) {
       parts.push(`<div class="topimage">
@@ -1099,14 +1325,12 @@ ${items}
   /* ---------------- Assembly ---------------- */
 
   function buildCSS(s) {
-    const importURL = fontImportURL(s, false);
     const header = `/* ============================================
    ${s.meta.themeName || 'Untitled Theme'}
    Generated with JAI Profile Studio
    ============================================ */`;
     const chunks = [
       header,
-      importURL ? `@import url('${importURL}');` : '',
       mBase(s),
       mBackground(s),
       mTopbar(s),
@@ -1122,7 +1346,7 @@ ${items}
 
   /** Preview font link tags (always loaded in preview regardless of import toggle). */
   function previewFontLinks(s) {
-    const url = fontImportURL(s, true);
+    const url = fontImportURL(s);
     return url ? `<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="${url}">` : '';
   }
 

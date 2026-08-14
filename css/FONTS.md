@@ -16,10 +16,4 @@ Aladin · Berkshire Swash · Black Ops One · Caveat · Caveat Brush · Chango �
 
 ## Fonts NOT in this list
 
-They can still be used with an explicit import at the top of the CSS:
-
-```css
-@import url('https://fonts.googleapis.com/css2?family=Quicksand&display=swap');
-```
-
-The studio adds this automatically whenever you pick a non-native font.
+**Cannot be used.** JanitorAI's sanitizer strips `@import` (and `url()`), so there is no way to load external fonts — the 56 above are the full menu. The studio's font pickers only offer these.

@@ -27,7 +27,7 @@ Top-right **Preset** dropdown:
 - **Colors** — six tokens drive the whole theme: page background, panel/card surface, two accents, text, muted text.
 - **Fonts** — heading + body. Leave "@import" on unless you've confirmed the font renders on the live site without it.
 - **Shape & glass** — corner radius (0 = sharp pixel look), frosted-glass toggle, blur amount, border strength.
-- **Background** — optional image URL, tint overlay, and an effect layer (bubbles / scanlines / stars).
+- **Background** — optional image URL (delivered as an `<img>` layer, since JanitorAI strips `url()` in CSS), tint overlay, and an animated effect layer: **bubbles, snow, falling petals, fireflies, rising embers, twinkling stars, rain, drifting fog, scanlines, or a vaporwave grid**. Particle colors follow your accent colors.
 - **Top bar** — replace the "JanitorAI" logo text, accent line under the bar.
 - **Profile box** — replace your display name and its effect (gradient / float / glitch), custom follower label (e.g. "Aquarium Visitors"), hide avatar/badges/member-since, center layout.
 - **Character cards** — "overlay" (poster-style: image fills the card, name pill on top, glass description at the bottom, tags reveal on hover) or "default" (stock layout, recolored). Size sliders, hover lift, float animation.

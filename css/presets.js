@@ -10,7 +10,7 @@ const DEFAULT_STATE = {
     text: '#f4f4f8',
     muted: '#9c9cae',
   },
-  fonts: { heading: 'Poppins', body: 'Poppins', import: false },
+  fonts: { heading: 'Poppins', body: 'Poppins' },
   shape: { radius: 16, glass: true, blur: 10, borderAlpha: 0.25 },
   background: { image: '', tint: '#000000', tintAlpha: 0, effect: 'none' },
   topbar: { enabled: true, logoText: '', accentLine: true, animateLine: true },
@@ -38,7 +38,7 @@ const PRESETS = {
   'Poolcore Glass': {
     // Inspired by the GeleeFish aquarium theme
     colors: { pageBg: '#01579b', surface: '#0277bd', accent: '#00d9ff', accent2: '#ff6ec7', text: '#e0f7fa', muted: '#a5d8e6' },
-    fonts: { heading: 'Pacifico', body: 'Quicksand', import: true },
+    fonts: { heading: 'Pacifico', body: 'Poppins' },
     shape: { radius: 20, glass: true, blur: 12, borderAlpha: 0.3 },
     background: { image: '', tint: '#01579b', tintAlpha: 0.35, effect: 'bubbles' },
     topbar: { enabled: true, logoText: 'Dive into the sea ~', accentLine: true, animateLine: true },
@@ -50,7 +50,7 @@ const PRESETS = {
   'Retro Terminal': {
     // Inspired by the ShinyHero pixel theme
     colors: { pageBg: '#0b0b0b', surface: '#141414', accent: '#609ad7', accent2: '#ff674d', text: '#ffffff', muted: '#d4c4a0' },
-    fonts: { heading: 'VT323', body: 'VT323', import: true },
+    fonts: { heading: 'VT323', body: 'VT323' },
     shape: { radius: 0, glass: false, blur: 0, borderAlpha: 0 },
     background: { image: '', tint: '#000000', tintAlpha: 0, effect: 'scanlines' },
     topbar: { enabled: true, logoText: 'START A CAMPAIGN', accentLine: true, animateLine: true },
@@ -62,7 +62,7 @@ const PRESETS = {
   'Neon Glitch': {
     // Inspired by the JFZ glitch theme
     colors: { pageBg: '#000000', surface: '#0d0d0d', accent: '#ffff00', accent2: '#e100ff', text: '#ffffff', muted: '#999999' },
-    fonts: { heading: 'Orbitron', body: 'DM Sans', import: true },
+    fonts: { heading: 'Rubik Glitch', body: 'DM Sans' },
     shape: { radius: 4, glass: false, blur: 0, borderAlpha: 0.15 },
     background: { image: '', tint: '#000000', tintAlpha: 0, effect: 'none' },
     topbar: { enabled: true, logoText: 'JANITOR + BETA', accentLine: true, animateLine: true },
@@ -73,7 +73,7 @@ const PRESETS = {
   },
   'Midnight Velvet': {
     colors: { pageBg: '#12071f', surface: '#241338', accent: '#c084fc', accent2: '#f0abfc', text: '#f5edff', muted: '#b1a0c9' },
-    fonts: { heading: 'Cinzel', body: 'Cormorant Garamond', import: true },
+    fonts: { heading: 'Cinzel', body: 'Crimson Text' },
     shape: { radius: 12, glass: true, blur: 14, borderAlpha: 0.2 },
     background: { image: '', tint: '#12071f', tintAlpha: 0.3, effect: 'stars' },
     topbar: { enabled: true, logoText: '', accentLine: true, animateLine: false },
@@ -84,7 +84,7 @@ const PRESETS = {
   },
   'Clean Slate': {
     colors: { pageBg: '#101014', surface: '#1b1b24', accent: '#8b5cf6', accent2: '#ec4899', text: '#f4f4f8', muted: '#9c9cae' },
-    fonts: { heading: 'DM Sans', body: 'DM Sans', import: false },
+    fonts: { heading: 'DM Sans', body: 'DM Sans' },
     shape: { radius: 12, glass: false, blur: 0, borderAlpha: 0.12 },
     background: { image: '', tint: '#000000', tintAlpha: 0, effect: 'none' },
     topbar: { enabled: true, logoText: '', accentLine: false, animateLine: false },

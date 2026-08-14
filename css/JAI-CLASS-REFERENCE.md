@@ -4,10 +4,19 @@ Extracted from a full-page inspect dump of a live profile (`exaerie-FULL-PAGE-HT
 
 ## ⚠️ Platform quirks (important)
 
-- **CSS custom properties (`--my-var`) do not work** in profile custom CSS. Bake literal values everywhere. (Chakra's own `var(--chakra-*)` values exist but don't rely on them.)
-- **Comments are erased when the site saves your CSS/HTML**, and the stripping can leave broken gaps — especially HTML comments. Ship comment-free code (the studio's export strips comments automatically).
-- **`<label>` elements reportedly don't survive** in the custom HTML part; avoid them (use `div`/`span`).
-- 56 Google fonts are **natively available** without any @import — see `FONTS.md`. Fonts outside that list need `@import url('https://fonts.googleapis.com/css2?family=...')`.
+Sources: firsthand findings plus the community rulebook at rentry.co/jaielements (by Puppy / @Permanent on JAI).
+
+**Blocked in CSS** (stripped by the sanitizer):
+- `url()` — no CSS background images, cursor images, or mask URLs. **Deliver every image as an `<img>` tag in the custom HTML** (this is why all working themes do it that way).
+- `@import` — no external fonts or stylesheets. Only the 56 native fonts work (see `FONTS.md`).
+- CSS custom properties (`--my-var` / `var()`) — bake literal values everywhere.
+- Comments — erased on save, and the stripping can corrupt surrounding code. Ship comment-free.
+- `row-gap` / `column-gap` (the **`gap` shorthand works**), `place-items`, CSS nesting, `@container`, `@property`, `attr()`, `mask-composite` (use the `mask` shorthand), `scroll-*` properties, `offset-*` properties.
+- `scrollbar-width` / `scrollbar-color` / `scrollbar-gutter` — but **`::-webkit-scrollbar` pseudo-elements work**, so style scrollbars that way.
+
+**Blocked in custom HTML**: `<input>` (all types), `<button>`, `<label>`, `<svg>`, `<script>`, `<video src>`, `<audio>`, ARIA attributes, the `details name` attribute. Stick to `div/span/p/a/img/details/summary` — all proven to survive.
+
+**Confirmed working**: `@keyframes`/animations, transitions, `backdrop-filter`, gradients, `clip-path`, `mask` shorthand with gradients, `::before`/`::after` with `content`, `:hover`, `:has()`, `position: fixed`, `details`/`summary` accordions, `gap` shorthand.
 
 ## Rule of thumb
 
