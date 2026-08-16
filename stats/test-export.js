@@ -9,7 +9,14 @@ const vm = require('vm');
 
 const HERE = __dirname;
 const script = fs.readFileSync(path.join(HERE, 'jai-export.js'), 'utf8');
-const fixture = JSON.parse(fs.readFileSync(path.join(HERE, 'jai-stats-latest.json'), 'utf8'));
+const DATA_FILE = (() => {
+  const cands = fs.readdirSync(HERE).filter((f) => /^jai-stats-.*\.json$/.test(f));
+  if (!cands.length) throw new Error('no jai-stats-*.json in ' + HERE);
+  // newest by mtime, so a fresh export is picked up without editing anything
+  return cands.map((f) => ({ f, t: fs.statSync(path.join(HERE, f)).mtimeMs }))
+    .sort((a, b) => b.t - a.t)[0].f;
+})();
+const fixture = JSON.parse(fs.readFileSync(path.join(HERE, DATA_FILE), 'utf8'));
 
 const PAGE_SIZE = 34;
 const allChars = fixture.characters.map((r) => r.character);
@@ -249,6 +256,56 @@ const check = (name, fn) => {
     });
     if (bad) throw new Error(bad + ' characters disagree between the two files');
     console.log('       every character reconciles across both CSVs');
+  });
+
+  console.log('\npublish anchoring');
+  check('pre-publish testing is measured, not folded into week one', () => {
+    const iPre = botHead.indexOf('pre_publish_days');
+    const iMsg = botHead.indexOf('pre_publish_messages');
+    if (iPre < 0 || iMsg < 0) throw new Error('missing pre_publish columns');
+    const recs = botLines.slice(1).map(splitCsv).filter((c) => Number(c[iPre]) > 0);
+    if (!recs.length) throw new Error('none found, but the fixture has pre-publish rows');
+    console.log('       ' + recs.length + ' characters had private activity before release, ' +
+      recs.reduce((a, c) => a + Number(c[iPre]), 0) + ' days / ' +
+      recs.reduce((a, c) => a + Number(c[iMsg]), 0) + ' messages');
+  });
+  check('week1 columns exclude everything before the publish date', () => {
+    const iId = botHead.indexOf('character_id'), iW1 = botHead.indexOf('week1_messages');
+    const dId = dayHead.indexOf('character_id'), dSince = dayHead.indexOf('days_since_publish');
+    const dMsg = dayHead.indexOf('messages'), dPre = dayHead.indexOf('is_pre_publish');
+    const expect = new Map();
+    dayLines.slice(1).forEach((l) => {
+      const c = splitCsv(l);
+      const since = Number(c[dSince]);
+      if (c[dPre] === '1' || c[dSince] === '' || since < 0 || since > 6) return;
+      expect.set(c[dId], (expect.get(c[dId]) || 0) + Number(c[dMsg]));
+    });
+    const iCap = botHead.indexOf('launch_week_captured');
+    let bad = 0, blank = 0;
+    botLines.slice(1).forEach((l) => {
+      const c = splitCsv(l);
+      if (c[iCap] !== '1') {
+        // never recorded, so it must be blank rather than a wrong number
+        if (c[iW1] !== '') bad++; else blank++;
+        return;
+      }
+      if (Number(c[iW1]) !== (expect.get(c[iId]) || 0)) bad++;
+    });
+    if (bad) throw new Error(bad + ' characters disagree between week1_messages and the daily file');
+    console.log('       reconciles for every character; ' + blank + ' correctly blank (release predates tracking)');
+  });
+  check('negative days_since_publish only ever appears on pre-publish rows', () => {
+    const dSince = dayHead.indexOf('days_since_publish'), dPre = dayHead.indexOf('is_pre_publish');
+    let bad = 0, neg = 0;
+    dayLines.slice(1).forEach((l) => {
+      const c = splitCsv(l);
+      if (c[dSince] === '') return;
+      const n = Number(c[dSince]);
+      if (n < 0) { neg++; if (c[dPre] !== '1') bad++; }
+      else if (c[dPre] === '1') bad++;
+    });
+    if (bad) throw new Error(bad + ' rows disagree between the flag and the offset');
+    console.log('       ' + neg + ' pre-release rows, all flagged');
   });
 
   console.log('\nsafety');

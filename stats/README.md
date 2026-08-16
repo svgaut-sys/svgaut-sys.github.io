@@ -15,8 +15,8 @@ Produces three files:
 
 | File | Contents |
 |---|---|
-| `jai-bots-<date>.csv` | one row per character, 34 columns — including `global_chats` and `global_messages`, the all-time counters from the character page |
-| `jai-daily-<date>.csv` | one row per character per day, gaps filled with zeros — the file you actually want for analysis |
+| `jai-bots-<date>.csv` | one row per character — including `global_chats` and `global_messages`, the all-time counters from the character page, and publish-anchored `week1_*` |
+| `jai-daily-<date>.csv` | one row per character per day, gaps filled with zeros, with `days_since_publish` and `is_pre_publish` — the file you actually want for analysis |
 | `jai-stats-<date>.json` | everything, unflattened |
 
 CSVs are UTF-8 with a BOM so Excel doesn't mangle character names, and are
@@ -29,7 +29,8 @@ because it is short enough to read in one sitting before running it.
 
 ### Feeding the app
 
-Drop the JSON on the page, or save it here as `jai-stats-latest.json`.
+Drop the JSON on the page, or leave it here — when served over http the app
+auto-loads `jai-stats-latest.json` or today's `jai-stats-<date>.json`.
 
 Both scripts borrow the site's own session by watching one request the page
 makes. The token stays inside the page and is never written to any output file —
@@ -38,15 +39,14 @@ API, the same ones the site makes when you open the ANALYTICS panel.
 
 ## Running the app
 
-Open `index.html` and drop the JSON on it. Auto-loading of `jai-stats-latest.json`
-only works when the page is served over http (browsers block `fetch` on
-`file://`), so for that:
+Open `index.html` and drop the JSON on it. Auto-loading only works when the page
+is served over http (browsers block `fetch` on `file://`), so for that:
 
 ```
 node -e "const h=require('http'),f=require('fs');h.createServer((q,s)=>{const n=q.url==='/'?'/index.html':q.url.split('?')[0];if(!f.existsSync('.'+n))return s.writeHead(404),s.end();s.writeHead(200,{'Cache-Control':'no-store'});f.createReadStream('.'+n).pipe(s)}).listen(8791)"
 ```
 
-then <http://localhost:8791/>. `?data=some-other-file.json` picks a different export.
+then <http://localhost:8791/>. `?data=some-other-file.json` picks a specific export.
 
 ## What it measures
 
@@ -80,9 +80,10 @@ the exact recency skew the windows exist to remove.
 
 ## Two things about the data that change the answers
 
-**Tracking starts 2025-12-25.** Bots older than that have no recorded launch week
-and are excluded from the launch/sustain comparison — they are listed with their
-reasons under the table, and still appear in the veterans section.
+**Tracking starts 2025-12-25.** Bots published before that have no recorded
+launch week and are excluded from the launch/sustain comparison — they are
+listed with their reasons under the table, and still appear in the endurance
+section, which needs no launch week.
 
 **The character page counter and the analytics series count different events.**
 Across bots living entirely inside the window their ratio is a tight 2.28–2.65
@@ -95,17 +96,33 @@ This matters: Brianna reads 67k in the series and 299k on its own page — about
 of its life predates tracking. Any ranking built on the daily series alone
 quietly punishes veterans.
 
-## Two reasons a bot has no launch week
+## Day zero is the publish date
 
-Kept apart, because conflating them misstates the data:
+**Not** the first day the analytics series has a number for. A character
+normally exists privately before release, and the creator's own test chats land
+in the daily series days or weeks ahead of publication — **38 of 70 characters**
+in the August 2026 export start that way.
 
-- **truncated** — the series is pinned to the first tracked day and the bot is
-  older than it. History really is missing (14 bots in the Aug 2026 export).
-- **quiet start** — it went up earlier but drew no traffic for a while. Nothing
-  is missing; there was nothing there (16 bots).
+Anchoring to the first data point instead gets it wrong twice over:
 
-`jai-bots-*.csv` carries both as `daily_history_truncated` and
-`daily_starts_after_launch_days`, plus `launch_week_captured`.
+- *Waiting for your arrival* was created 17 Jan and published 9 Mar. Its "week
+  one" was 8 private days totalling **39 test messages**; the real week one is
+  **34,663**.
+- *Sleepover dick-pic incident*, the largest bot in the account, had a 2-day
+  lead. Its week-1 average was diluted by two days of 73 test messages —
+  38k/day reported against 49k/day actual.
+
+So the app trims everything before the publish date, pads with real zeros if a
+bot drew no traffic in its first days, and reports how much it removed. The
+exporter carries `pre_publish_days`, `pre_publish_messages`,
+`first_data_minus_publish_days`, and per-day `days_since_publish` /
+`is_pre_publish` so anyone analysing the CSV can do the same.
+
+A bot published **before** tracking began is a different case: that is missing
+history, not a fixable offset, so it gets no launch week at all
+(`launch_week_captured = 0`, `daily_history_truncated = 1`) and `week1_*` is
+left blank rather than filled with whatever the first seven available rows
+happened to be.
 
 ## Tests
 
@@ -121,5 +138,7 @@ with ~no pre-window volume, or the factor is wrong.
 
 `test-export.js` runs the real exporter against a fake JanitorAI backed by a
 captured export, and checks paging, the global counters against source, CSV
-quoting of names containing commas, that both CSVs reconcile, and that the auth
-token appears in none of the outputs.
+quoting of names containing commas, that both CSVs reconcile, that `week1_*`
+matches `days_since_publish` 0-6 in the daily file, and that the auth token
+appears in none of the outputs. Both harnesses pick the newest
+`jai-stats-*.json` in this folder automatically.

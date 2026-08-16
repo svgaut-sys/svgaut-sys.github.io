@@ -453,10 +453,15 @@ function boot() {
      newest export beside index.html as jai-stats-latest.json and it loads by
      itself. ?data=<name> overrides. Fails quietly on file:// URLs, where the
      browser blocks the fetch and the drop zone stays. */
-  const wanted = new URLSearchParams(location.search).get('data') || 'jai-stats-latest.json';
+  const asked = new URLSearchParams(location.search).get('data');
+  // The exporter writes jai-stats-<today>.json, so try that as well as the
+  // stable name — saves renaming the file after every export.
+  const wanted = asked
+    ? [asked]
+    : ['jai-stats-latest.json', 'jai-stats-' + new Date().toISOString().slice(0, 10) + '.json'];
   if (location.protocol.startsWith('http')) {
-    fetch(wanted, { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : null))
+    wanted.reduce((chain, name) => chain.then((got) => got || fetch(name, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null)).catch(() => null)), Promise.resolve(null))
       .then((json) => {
         if (!json || !Array.isArray(json.characters)) return;
         if (RAW && RAW.exportedAt === json.exportedAt) return;   // cache already has it
@@ -518,12 +523,13 @@ function compact(json) {
       series.push(COLS.map((k) => (d && d[k]) || 0));
     }
 
-    const birth = (c.first_published_at || c.created_at || '').slice(0, 10);
     const st = c.stats || {};
     bots.push({
       id: c.id,
       name: c.name || '(untitled)',
-      birth,
+      created: (c.created_at || '').slice(0, 10),
+      published: (c.first_published_at || '').slice(0, 10),
+      birth: (c.first_published_at || c.created_at || '').slice(0, 10),
       // The counters shown on the character page. These are all-time and predate
       // the analytics window, so for older bots they are much larger than
       // anything the daily series can account for.
@@ -536,11 +542,42 @@ function compact(json) {
     });
   }
 
-  // A bot only has a real launch week if tracking was already running when it
-  // shipped. Everything older is left-censored: its series starts mid-life.
+  /* ------------------------------------------------------ anchor to publish
+     Day 0 is the day the bot went PUBLIC, not the first day analytics holds a
+     number for. A character usually exists privately first, and the creator's
+     own test chats land in the series days or weeks before anyone else can see
+     it. Anchoring to the first data point instead:
+       - counts those test messages as "week one" (Waiting for your arrival:
+         39 test messages over 8 private days, against a real week one of 34k), and
+       - hides the bot entirely behind any tolerance on the gap.
+     38 of 70 characters in the August 2026 export start before their publish
+     date, so this is the normal case rather than an edge case.
+     A bot published before tracking began is still left-censored and gets no
+     launch week — that is missing history, not a fixable offset. */
   bots.forEach((b) => {
-    const drift = Math.abs((Date.parse(b.start) - Date.parse(b.birth || b.start)) / DAY);
-    b.hasLaunch = !!b.birth && b.birth >= windowStart && drift <= 2;
+    b.preLaunchDays = 0;
+    b.preLaunchVolume = 0;
+    b.paddedDays = 0;
+    b.hasLaunch = !!b.published && b.published >= windowStart;
+    if (!b.hasLaunch) return;
+
+    const mi = COLS.indexOf('messages');
+    if (b.published > b.start) {
+      // Private testing before release: drop it, but keep a record.
+      const drop = Math.round((Date.parse(b.published) - Date.parse(b.start)) / DAY);
+      const removed = b.series.splice(0, Math.min(drop, b.series.length));
+      b.preLaunchDays = removed.length;
+      b.preLaunchVolume = removed.reduce((a, r) => a + r[mi], 0);
+    } else if (b.published < b.start) {
+      // Published, but nobody came for a while. Those days are real zeros:
+      // tracking was already running, so silence is data, not absence.
+      b.paddedDays = Math.round((Date.parse(b.start) - Date.parse(b.published)) / DAY);
+      const zeros = [];
+      for (let i = 0; i < b.paddedDays; i++) zeros.push(COLS.map(() => 0));
+      b.series = zeros.concat(b.series);
+    }
+    b.start = b.published;
+    if (!b.series.length) b.hasLaunch = false;
   });
 
   return { exportedAt: json.exportedAt, windowStart, bots };
@@ -854,8 +891,18 @@ function renderLaunch(v) {
   });
   const tot = list.reduce((a, r) => a + r.total, 0);
   const lv = list.reduce((a, r) => a + r.launchTotal, 0);
+  const trimmed = list.filter((r) => r.bot.preLaunchDays > 0);
+  const padded = list.filter((r) => r.bot.paddedDays > 0);
   $('#launchNote').textContent = list.length
-    ? 'Week one is ' + pctS(lv / tot, 0) + ' of all lifetime ' + STATE.metric + ' across these ' + list.length + ' bots, from ' + pctS(LAUNCH_DAYS / (list.reduce((a, r) => a + r.n, 0) / list.length), 0) + ' of their days alive.'
+    ? 'Week one is ' + pctS(lv / tot, 0) + ' of all lifetime ' + STATE.metric + ' across these ' + list.length +
+      ' bots, from ' + pctS(LAUNCH_DAYS / (list.reduce((a, r) => a + r.n, 0) / list.length), 0) + ' of their days alive. ' +
+      'Day zero is the publish date, not the first day with data: ' +
+      (trimmed.length
+        ? trimmed.length + ' of these existed privately first and ' +
+          trimmed.reduce((a, r) => a + r.bot.preLaunchDays, 0) + ' days of pre-release testing (' +
+          fmt(trimmed.reduce((a, r) => a + r.bot.preLaunchVolume, 0)) + ' messages) were cut out of week one'
+        : 'none of these had pre-release activity') +
+      (padded.length ? ', and ' + padded.length + ' drew no traffic for a day or more after release, counted as the zeros they are' : '') + '.'
     : '';
 }
 
@@ -1477,24 +1524,24 @@ function renderTable(v) {
   /* Two distinct reasons a bot has no measurable launch week, and conflating
      them misstates the data: one had its history cut off, the other simply sat
      quiet for a while after going up. */
-  const truncated = v.excluded.filter((r) => !r.hasLaunch && r.bot.start === RAW.windowStart && r.bot.birth < RAW.windowStart);
-  const quiet = v.excluded.filter((r) => !r.hasLaunch && !truncated.includes(r));
+  const truncated = v.excluded.filter((r) => !r.hasLaunch && r.bot.published && r.bot.published < RAW.windowStart);
+  const unpublished = v.excluded.filter((r) => !r.hasLaunch && !r.bot.published);
   const small = v.excluded.filter((r) => r.hasLaunch);
   const names = (list) => list.map((r) => r.bot.name + ' (' + fmt(r.current) + '/d)').join(' · ');
 
   ex.appendChild(el('summary', { text: v.excluded.length + ' bots excluded from the launch comparison — see why' }));
   if (truncated.length) {
-    ex.appendChild(el('p', { class: 'note', text: truncated.length + ' shipped before tracking began on ' + shortDate(RAW.windowStart) + ', so their week one was never recorded and their history is genuinely cut off. Their current pull is still real: ' + names(truncated) }));
+    ex.appendChild(el('p', { class: 'note', text: truncated.length + ' were published before tracking began on ' + shortDate(RAW.windowStart) + ', so their week one was never recorded and their history is genuinely cut off. Their current pull is still real: ' + names(truncated) }));
   }
-  if (quiet.length) {
-    ex.appendChild(el('p', { class: 'note', text: quiet.length + ' went up earlier but drew no traffic until well after launch, so there is no launch spike to measure against — nothing is missing, there was simply nothing there: ' + names(quiet) }));
+  if (unpublished.length) {
+    ex.appendChild(el('p', { class: 'note', text: unpublished.length + ' have no publish date on record, so there is no day zero to measure from: ' + unpublished.map((r) => r.bot.name).join(' · ') }));
   }
   // A bot younger than a full launch week has no week-1 average at all, which
   // is not the same as having one that came in under the floor.
   const tooNew = small.filter((r) => r.launchMean == null);
   const belowFloor = small.filter((r) => r.launchMean != null);
   if (tooNew.length) {
-    ex.appendChild(el('p', { class: 'note', text: tooNew.length + ' are younger than a full ' + LAUNCH_DAYS + '-day launch week, so there is nothing to average yet: ' + tooNew.map((r) => r.bot.name + ' (' + r.n + 'd old)').join(' · ') }));
+    ex.appendChild(el('p', { class: 'note', text: tooNew.length + (tooNew.length === 1 ? ' is' : ' are') + ' younger than a full ' + LAUNCH_DAYS + '-day launch week, so there is nothing to average yet: ' + tooNew.map((r) => r.bot.name + ' (' + r.n + 'd old)').join(' · ') }));
   }
   if (belowFloor.length) {
     ex.appendChild(el('p', { class: 'note', text: belowFloor.length + ' opened below the ' + STATE.minvol + '/day floor: ' + belowFloor.map((r) => r.bot.name + ' (' + fmt(r.launchMean) + '/d)').join(' · ') }));

@@ -1,5 +1,5 @@
 /* ==========================================================================
-   JanitorAI creator stats exporter                                    v1.0
+   JanitorAI creator stats exporter                                    v1.1
    --------------------------------------------------------------------------
    Exports every stat JanitorAI holds about YOUR OWN characters into three
    files you can open in Excel, Google Sheets, R, pandas — whatever you like.
@@ -42,12 +42,18 @@
        2.3-2.6x the latter. Neither is wrong; they measure different things.
      * Private characters are included. Delete rows you don't want before
        sharing the CSV with anyone.
+     * DAY ZERO IS THE PUBLISH DATE, not the first day with data. A character
+       usually exists privately for a while first, and the creator's own test
+       chats land in the daily series before release — in one real account 38
+       of 70 characters started that way. Group the daily file by
+       `days_since_publish` (0 = release day) and drop `is_pre_publish = 1`
+       rows, or your "week one" is somebody testing their own bot.
    ========================================================================== */
 
 (async function () {
   'use strict';
 
-  const VERSION = '1.0';
+  const VERSION = '1.1';
   const TAG = '%c[JAI export]';
   const CSS = 'color:#3987e5;font-weight:bold';
   const log = (...a) => console.log(TAG, CSS, ...a);
@@ -260,6 +266,20 @@
     const created = (c.created_at || '').slice(0, 10);
     const published = (c.first_published_at || '').slice(0, 10);
 
+    // Split the series at the publish date: everything before it is the
+    // creator testing their own bot in private, not audience activity.
+    const prePublish = published ? series.filter((d) => d.date < published) : [];
+
+    /* Week one is a DATE RANGE from release, never "the first seven rows we
+       have". For a bot published before tracking began the first seven rows
+       are days 50-120 of its life, and reporting those as week one is worse
+       than reporting nothing. */
+    const launchCaptured = !!(published && windowStart && published >= windowStart);
+    const wk1End = published ? iso(Date.parse(published + 'T00:00:00Z') + 6 * DAY) : '';
+    const week1 = launchCaptured
+      ? series.filter((d) => d.date >= published && d.date <= wk1End)
+      : null;
+
     return {
       raw: r,
       series,
@@ -294,18 +314,27 @@
         last_tracked_day: dates[dates.length - 1] || '',
         days_tracked: series.length,
 
-        /* Two different reasons a daily series may not begin at launch, worth
-           keeping apart: the history was cut off by when tracking started, or
-           the bot simply had no traffic for a while after going up. Only the
-           first one means data is missing. */
-        daily_history_truncated: (dates.length && windowStart && dates[0] === windowStart &&
-          created && created < windowStart) ? 1 : 0,
-        daily_starts_after_launch_days: (dates.length && (published || created))
-          ? Math.round((Date.parse(dates[0]) - Date.parse(published || created)) / DAY)
+        /* A character normally exists privately before release, and the
+           creator's own test chats show up in the daily series days or weeks
+           ahead of the publish date. Treating the first data point as day zero
+           therefore counts private testing as "week one". Day zero is the
+           PUBLISH date; these columns say how far off the raw series was. */
+        pre_publish_days: prePublish.length,
+        pre_publish_messages: prePublish.reduce((a, d) => a + d.messages, 0),
+        first_data_minus_publish_days: (dates.length && published)
+          ? Math.round((Date.parse(dates[0]) - Date.parse(published)) / DAY)
           : '',
-        launch_week_captured: (dates.length && (published || created) &&
-          Math.abs((Date.parse(dates[0]) - Date.parse(published || created)) / DAY) <= 2 &&
-          (published || created) >= windowStart) ? 1 : 0,
+
+        // A launch week is only measurable if tracking was already running at
+        // release. Older bots are left-censored: that is missing history, not
+        // an offset that can be corrected.
+        launch_week_captured: (published && windowStart && published >= windowStart) ? 1 : 0,
+        daily_history_truncated: (published && windowStart && published < windowStart) ? 1 : 0,
+
+        // Week one measured from the publish date, private testing excluded.
+        // Blank when release predates tracking: that week was never recorded.
+        week1_messages: week1 ? week1.reduce((a, d) => a + d.messages, 0) : '',
+        week1_chats: week1 ? week1.reduce((a, d) => a + d.chats, 0) : '',
 
         tracked_messages: sum('messages'),
         tracked_chats: sum('chats'),
@@ -344,11 +373,19 @@
   const botHeaders = Object.keys(bots[0].flat);
   const botCsv = csv(botHeaders, bots.map((b) => b.flat));
 
-  const dailyHeaders = ['character_id', 'name', 'date', 'day_index'].concat(DAILY_COLS);
+  const dailyHeaders = ['character_id', 'name', 'date', 'day_index', 'days_since_publish', 'is_pre_publish']
+    .concat(DAILY_COLS);
   const dailyRecords = [];
   bots.forEach((b) => {
+    const pub = b.flat.first_published;
     b.series.forEach((d, i) => {
-      const rec = { character_id: b.flat.character_id, name: b.flat.name, date: d.date, day_index: i };
+      // days_since_publish is the one to group by: 0 is release day, negatives
+      // are the creator's private testing and are usually worth filtering out.
+      const rec = {
+        character_id: b.flat.character_id, name: b.flat.name, date: d.date, day_index: i,
+        days_since_publish: pub ? Math.round((Date.parse(d.date) - Date.parse(pub)) / DAY) : '',
+        is_pre_publish: (pub && d.date < pub) ? 1 : 0
+      };
       DAILY_COLS.forEach((k) => {
         rec[k] = (k === 'avgChatDurationSec' || k === 'avgViewDurationSec') ? +d[k].toFixed(1) : d[k];
       });

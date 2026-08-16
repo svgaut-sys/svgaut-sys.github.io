@@ -9,7 +9,14 @@ const vm = require('vm');
 const HERE = __dirname;
 const html = fs.readFileSync(path.join(HERE, 'index.html'), 'utf8');
 const code = html.match(/<script>([\s\S]*)<\/script>/)[1];
-const data = JSON.parse(fs.readFileSync(path.join(HERE, 'jai-stats-latest.json'), 'utf8'));
+const DATA_FILE = (() => {
+  const cands = fs.readdirSync(HERE).filter((f) => /^jai-stats-.*\.json$/.test(f));
+  if (!cands.length) throw new Error('no jai-stats-*.json in ' + HERE);
+  // newest by mtime, so a fresh export is picked up without editing anything
+  return cands.map((f) => ({ f, t: fs.statSync(path.join(HERE, f)).mtimeMs }))
+    .sort((a, b) => b.t - a.t)[0].f;
+})();
+const data = JSON.parse(fs.readFileSync(path.join(HERE, DATA_FILE), 'utf8'));
 
 /* ------------------------------------------------------------- stub DOM */
 const NODES = [];
@@ -92,6 +99,7 @@ const bridge = `
 vm.createContext(sandbox);
 vm.runInContext(code.replace(/^const el = /m, 'let el = ') + bridge, sandbox, { filename: 'index.html<script>' });
 const app = sandbox.__api;
+const COLS_MSG = 4;   // index of 'messages' in COLS
 
 /* ------------------------------------------------------------ exercise */
 let failures = 0;
@@ -120,6 +128,48 @@ check('launch flag matches the tracking window', () => {
   const withLaunch = app.RAW.bots.filter((b) => b.hasLaunch).length;
   if (withLaunch === 0 || withLaunch === app.RAW.bots.length) throw new Error('suspicious count: ' + withLaunch);
   console.log('       ' + withLaunch + ' of ' + app.RAW.bots.length + ' bots have a captured launch week');
+});
+
+console.log('\nlaunch anchoring (day 0 = publish date, not first data point)');
+check('no bot with a launch week starts before it was published', () => {
+  const bad = app.RAW.bots.filter((b) => b.hasLaunch && b.start !== b.published);
+  if (bad.length) throw new Error(bad.length + ' anchored somewhere other than their publish date: ' +
+    bad.slice(0, 3).map((b) => b.name + ' (' + b.start + ' vs ' + b.published + ')').join(', '));
+  console.log('       ' + app.RAW.bots.filter((b) => b.hasLaunch).length + ' bots anchored to their publish date');
+});
+check('private pre-release testing is trimmed and accounted for', () => {
+  const trimmed = app.RAW.bots.filter((b) => b.preLaunchDays > 0);
+  if (!trimmed.length) throw new Error('nothing trimmed — the export has pre-publish rows, so this is wrong');
+  const days = trimmed.reduce((a, b) => a + b.preLaunchDays, 0);
+  const vol = trimmed.reduce((a, b) => a + b.preLaunchVolume, 0);
+  console.log('       ' + trimmed.length + ' bots, ' + days + ' private days, ' + vol + ' test messages removed from week one');
+});
+check('silence after release is padded with real zeros', () => {
+  const padded = app.RAW.bots.filter((b) => b.paddedDays > 0);
+  padded.forEach((b) => {
+    for (let i = 0; i < b.paddedDays; i++) {
+      if (b.series[i].some((x) => x !== 0)) throw new Error(b.name + ' padded a non-zero day');
+    }
+  });
+  console.log('       ' + padded.length + ' bots padded from release to first traffic');
+});
+check('the long-lead regression case is included and sane', () => {
+  // Created 2026-01-17, published 2026-03-09: 51 days of private life. Under the
+  // old anchoring its week one was 39 test messages and it was dropped entirely.
+  const b = app.RAW.bots.find((x) => /Waiting for your arrival/i.test(x.name));
+  if (!b) { console.log('       (bot not in this export, skipped)'); return; }
+  if (!b.hasLaunch) throw new Error('still excluded from the launch comparison');
+  if (b.start !== b.published) throw new Error('not anchored to publish');
+  const r = app.analyse(b, COLS_MSG, app.RAW.windowStart);
+  if (!(r.launchMean > 1000)) throw new Error('week-1 mean is ' + r.launchMean + ', still reading the private days');
+  console.log('       ' + b.name + ': ' + b.preLaunchDays + ' private days cut, week-1 now ' +
+    Math.round(r.launchMean) + '/day (was ~5/day)');
+});
+check('bots published before tracking are still excluded, not mis-anchored', () => {
+  const pre = app.RAW.bots.filter((b) => b.published && b.published < app.RAW.windowStart);
+  const wrong = pre.filter((b) => b.hasLaunch);
+  if (wrong.length) throw new Error(wrong.length + ' pre-window bots claim a launch week');
+  console.log('       ' + pre.length + ' bots published before ' + app.RAW.windowStart + ', all excluded');
 });
 
 console.log('\nmedians frozen across the whole account');
