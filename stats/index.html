@@ -1,0 +1,1590 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Launch vs Sustain</title>
+<style>
+/* ---------------------------------------------------------------- tokens */
+:root {
+  color-scheme: light;
+  --surface-1:#fcfcfb; --plane:#f9f9f7;
+  --ink-1:#0b0b0b; --ink-2:#52514e; --ink-muted:#898781;
+  --grid:#e1e0d9; --axis:#c3c2b7; --border:rgba(11,11,11,0.10);
+  --cls-5:#104281; --cls-4:#1c5cab; --cls-3:#2a78d6; --cls-2:#5598e7; --cls-1:#86b6ef;
+  --cls-na:#898781;
+  --series-1:#2a78d6; --series-2:#eb6834; --series-3:#1baf7a;
+  --series-4:#eda100; --series-5:#e87ba4; --series-6:#008300;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --surface-1:#1a1a19; --plane:#0d0d0d;
+    --ink-1:#ffffff; --ink-2:#c3c2b7; --ink-muted:#898781;
+    --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,0.10);
+    --cls-5:#184f95; --cls-4:#256abf; --cls-3:#3987e5; --cls-2:#6da7ec; --cls-1:#9ec5f4;
+    --cls-na:#898781;
+    --series-1:#3987e5; --series-2:#d95926; --series-3:#199e70;
+    --series-4:#c98500; --series-5:#d55181; --series-6:#008300;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface-1:#1a1a19; --plane:#0d0d0d;
+  --ink-1:#ffffff; --ink-2:#c3c2b7; --ink-muted:#898781;
+  --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,0.10);
+  --cls-5:#184f95; --cls-4:#256abf; --cls-3:#3987e5; --cls-2:#6da7ec; --cls-1:#9ec5f4;
+  --cls-na:#898781;
+  --series-1:#3987e5; --series-2:#d95926; --series-3:#199e70;
+  --series-4:#c98500; --series-5:#d55181; --series-6:#008300;
+}
+
+* { box-sizing: border-box; }
+body { margin:0; background:var(--plane); color:var(--ink-1);
+       font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif; }
+.wrap { max-width:1240px; margin:0 auto; padding:28px 20px 90px; }
+h1 { font-size:22px; margin:0 0 4px; letter-spacing:-.01em; }
+h2 { font-size:15px; margin:0 0 2px; letter-spacing:-.005em; }
+.sub { color:var(--ink-2); font-size:13px; margin:0; }
+.muted { color:var(--ink-muted); }
+header.top { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:20px; }
+button.ghost { background:var(--surface-1); color:var(--ink-2); border:1px solid var(--border);
+  border-radius:8px; padding:7px 12px; font:inherit; font-size:13px; cursor:pointer; }
+button.ghost:hover { color:var(--ink-1); }
+.card { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
+  padding:18px 20px 20px; margin-bottom:18px; }
+.card > header { margin-bottom:14px; }
+.eyebrow { font-size:10.5px; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-muted);
+  font-weight:600; margin:0 0 5px; }
+
+#drop { border:1.5px dashed var(--axis); border-radius:12px; padding:44px 24px; text-align:center;
+  background:var(--surface-1); color:var(--ink-2); }
+#drop.hot { border-color:var(--series-1); color:var(--ink-1); }
+#drop code { background:var(--plane); padding:2px 6px; border-radius:4px; font-size:12px; }
+#drop input { display:none; }
+.btn-primary { display:inline-block; margin-top:14px; background:var(--series-1); color:#fff; border:0;
+  border-radius:8px; padding:10px 18px; font:inherit; font-weight:600; cursor:pointer; }
+
+.filters { display:flex; flex-wrap:wrap; gap:14px 18px; align-items:flex-end; background:var(--surface-1);
+  border:1px solid var(--border); border-radius:12px; padding:14px 18px; margin-bottom:18px; }
+.filters label { display:block; font-size:11px; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--ink-muted); margin-bottom:5px; }
+.filters select, .filters input[type=search], .filters input[type=number] {
+  background:var(--plane); color:var(--ink-1); border:1px solid var(--border); border-radius:7px;
+  padding:7px 9px; font:inherit; font-size:13px; min-width:160px; }
+.grow { margin-left:auto; display:flex; gap:8px; }
+
+.tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(148px,1fr)); gap:1px;
+  background:var(--border); border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:18px; }
+.tile { background:var(--surface-1); padding:14px 16px 16px; }
+.tile .v { font-size:26px; font-weight:600; letter-spacing:-.02em; line-height:1.15; }
+.tile .k { font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-muted); margin-top:3px; }
+.tile .n { font-size:12px; color:var(--ink-2); margin-top:2px; }
+
+.legend { display:flex; flex-wrap:wrap; gap:6px 16px; margin-top:12px; font-size:12px; color:var(--ink-2); }
+.legend i { width:11px; height:11px; border-radius:3px; display:inline-block; }
+.legend button { background:none; border:0; padding:0; font:inherit; color:inherit; cursor:pointer;
+  display:inline-flex; align-items:center; gap:6px; }
+.legend button[aria-pressed="false"] { opacity:.38; }
+.legend span.static { display:inline-flex; align-items:center; gap:6px; }
+
+.chip { display:inline-block; font-size:10.5px; font-weight:600; letter-spacing:.03em; padding:2px 7px;
+  border-radius:999px; color:#fff; white-space:nowrap; }
+.chip.lightink { color:#0b0b0b; }
+
+/* ranked bar rows */
+.bars { display:flex; flex-direction:column; gap:5px; }
+.bar { display:grid; grid-template-columns:minmax(150px,260px) 1fr 128px; gap:12px; align-items:center;
+  background:none; border:0; padding:3px 4px; font:inherit; color:inherit; text-align:left;
+  cursor:pointer; border-radius:6px; }
+.bar:hover { background:var(--plane); }
+.bar[aria-pressed="true"] { box-shadow:inset 0 0 0 1px var(--series-1); }
+.bar .lbl { font-size:12.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.bar .track { height:14px; position:relative; }
+.bar .fill { position:absolute; left:0; top:0; bottom:0; border-radius:0 4px 4px 0; }
+.bar .val { font-size:12.5px; font-variant-numeric:tabular-nums; text-align:right; color:var(--ink-2); }
+
+.sparks { display:grid; grid-template-columns:repeat(auto-fill,minmax(214px,1fr)); gap:14px; }
+.spark { border:1px solid var(--border); border-radius:10px; padding:10px 11px 8px; cursor:pointer;
+  background:none; text-align:left; font:inherit; color:inherit; width:100%; }
+.spark:hover { border-color:var(--axis); }
+.spark[aria-pressed="true"] { border-color:var(--series-1); box-shadow:inset 0 0 0 1px var(--series-1); }
+.spark .nm { font-size:12.5px; font-weight:600; line-height:1.3; height:2.6em; overflow:hidden; margin-bottom:6px; }
+.spark .meta { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:6px;
+  font-size:11px; color:var(--ink-2); }
+.spark svg { display:block; width:100%; height:44px; }
+
+.tablewrap { overflow-x:auto; }
+table { border-collapse:collapse; width:100%; font-size:12.5px; font-variant-numeric:tabular-nums; }
+th, td { padding:7px 10px; text-align:right; white-space:nowrap; border-bottom:1px solid var(--grid); }
+th:first-child, td:first-child { text-align:left; white-space:normal; min-width:210px; }
+th:nth-child(2), td:nth-child(2) { text-align:left; }
+th { font-size:10.5px; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-muted);
+  font-weight:600; cursor:pointer; position:sticky; top:0; background:var(--surface-1); }
+th:hover, th[aria-sort] { color:var(--ink-1); }
+tbody tr:hover { background:var(--plane); }
+td.name { cursor:pointer; }
+td.name:hover { text-decoration:underline; }
+td.na { color:var(--ink-muted); }
+
+#tip { position:fixed; pointer-events:none; z-index:40; opacity:0; transition:opacity .1s;
+  background:var(--surface-1); border:1px solid var(--border); border-radius:9px; padding:9px 11px;
+  font-size:12px; box-shadow:0 6px 24px rgba(0,0,0,.18); max-width:300px; }
+#tip .t { font-weight:600; margin-bottom:4px; }
+#tip .r { display:flex; justify-content:space-between; gap:14px; color:var(--ink-2); }
+#tip .r b { color:var(--ink-1); font-weight:600; font-variant-numeric:tabular-nums; }
+
+.note { font-size:12px; color:var(--ink-muted); margin-top:10px; }
+.hidden { display:none !important; }
+.axis-label { font-size:10.5px; fill:var(--ink-muted); font-variant-numeric:tabular-nums; }
+.axis-title { font-size:11px; fill:var(--ink-2); }
+.empty { padding:34px 10px; text-align:center; color:var(--ink-muted); font-size:13px; }
+.tabs { display:flex; gap:4px; }
+.tabs button { background:none; border:0; border-radius:8px; padding:7px 13px; font:inherit; font-size:13px;
+  color:var(--ink-2); cursor:pointer; }
+.tabs button[aria-selected="true"] { background:var(--plane); color:var(--ink-1); font-weight:600;
+  box-shadow:inset 0 0 0 1px var(--border); }
+details.excluded { margin-top:6px; }
+details.excluded summary { cursor:pointer; color:var(--ink-2); font-size:13px; }
+.split { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+@media (max-width:900px) { .split { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div>
+      <h1>Launch vs Sustain</h1>
+      <p class="sub">Week one is its own universe. Everything after it is the business.</p>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="ghost" id="themeBtn" type="button">Theme</button>
+      <button class="ghost hidden" id="loadBtn" type="button">Load another file</button>
+    </div>
+  </header>
+
+  <div id="drop">
+    <strong>Drop <code>jai-stats-*.json</code> here</strong>
+    <p class="sub" style="margin:8px 0 0">Produced by <code>collect-jai-stats.js</code> in your browser console.</p>
+    <label class="btn-primary" for="file">Choose file</label>
+    <input type="file" id="file" accept="application/json,.json">
+    <p class="note" id="cacheNote"></p>
+  </div>
+
+  <main id="app" class="hidden">
+
+    <div class="filters">
+      <div>
+        <label for="metric">Metric</label>
+        <select id="metric">
+          <option value="messages">Messages sent</option>
+          <option value="chats">Chats opened</option>
+          <option value="uniqueChatters">Unique chatters</option>
+          <option value="views">Page views</option>
+          <option value="uniqueViewers">Unique viewers</option>
+        </select>
+      </div>
+      <div>
+        <label for="window">Sustain window</label>
+        <select id="window"></select>
+      </div>
+      <div>
+        <label for="minvol">Min week-1 per day</label>
+        <input type="number" id="minvol" min="0" step="50" value="100">
+      </div>
+      <div>
+        <label for="q">Search</label>
+        <input type="search" id="q" placeholder="name or tag">
+      </div>
+      <div class="grow">
+        <button class="ghost" id="csvBtn" type="button">Export CSV</button>
+      </div>
+    </div>
+
+    <div class="tiles" id="tiles"></div>
+
+    <!-- ================================================ SECTION 1: LAUNCH -->
+    <section class="card">
+      <header>
+        <p class="eyebrow">Section 1 — the outlier</p>
+        <h2>Launch week</h2>
+        <p class="sub">Days 0–6, the front-page spike. Daily average of <span class="mname">messages</span>. This is the number every bot is best at, so it tells you almost nothing about longevity on its own — it is the baseline everything else is measured against.</p>
+      </header>
+      <div class="bars" id="launchBars"></div>
+      <p class="note" id="launchNote"></p>
+    </section>
+
+    <!-- =============================================== SECTION 2: SUSTAIN -->
+    <section class="card">
+      <header>
+        <p class="eyebrow">Section 2 — the business</p>
+        <h2>Sustain</h2>
+        <p class="sub" id="sustainSub"></p>
+      </header>
+      <div class="bars" id="sustainBars"></div>
+      <div class="legend" id="clsLegend"></div>
+      <p class="note" id="sustainNote"></p>
+    </section>
+
+    <!-- ============================================== SECTION 3: VETERANS -->
+    <section class="card">
+      <header>
+        <p class="eyebrow">Section 3 — the veterans</p>
+        <h2>Endurance</h2>
+        <p class="sub" id="endSub"></p>
+        <div class="tabs" id="ageTabs" style="margin-top:10px">
+          <button type="button" data-w="0" aria-selected="false">Ignore age</button>
+          <button type="button" data-w="0.5" aria-selected="true">Age counts (√)</button>
+          <button type="button" data-w="1" aria-selected="false">Age counts fully</button>
+        </div>
+      </header>
+      <div class="bars" id="vetBars"></div>
+      <div class="legend" id="ageLegend"></div>
+      <p class="note" id="vetNote"></p>
+    </section>
+
+    <section class="card">
+      <header>
+        <h2>Life before the tape started</h2>
+        <p class="sub" id="calSub"></p>
+      </header>
+      <div class="bars" id="preBars"></div>
+      <div class="legend" id="preLegend"></div>
+      <p class="note" id="preNote"></p>
+    </section>
+
+    <section class="card">
+      <header>
+        <h2>Does age build loyalty?</h2>
+        <p class="sub">Share of a bot's viewers who actually open a chat, against its age. A visitor to an old bot is far more likely to be someone who came looking for it.</p>
+      </header>
+      <div id="loyalty"></div>
+      <p class="note" id="loyaltyNote"></p>
+    </section>
+
+    <!-- ================================================== DECAY CURVES ---->
+    <section class="card">
+      <header style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap">
+        <div>
+          <p class="eyebrow">Section 1 against section 2</p>
+          <h2>Decay curves</h2>
+          <p class="sub">Every bot aligned to its own launch day and scaled so week one = 100%. 15-day smoothed and on a log scale, because the drop spans two orders of magnitude. Flat lines are burners; cliffs are hype.</p>
+        </div>
+        <div class="tabs" id="curveTabs">
+          <button type="button" data-mode="all" aria-selected="true">All bots</button>
+          <button type="button" data-mode="sel" aria-selected="false">Selected only</button>
+        </div>
+      </header>
+      <div id="curves"></div>
+      <div class="legend" id="curveLegend"></div>
+    </section>
+
+    <!-- ==================================================== SCATTER ------->
+    <section class="card">
+      <header>
+        <h2>Big launch or long life?</h2>
+        <p class="sub">Launch pace across the bottom, sustain up the side. If the two were independent this cloud would be shapeless — read the figure under the chart before assuming it is.</p>
+      </header>
+      <div id="scatter"></div>
+      <p class="note" id="scatterNote"></p>
+    </section>
+
+    <!-- ================================================== SHAPE GRID ----->
+    <section class="card">
+      <header>
+        <h2>Shapes at a glance</h2>
+        <p class="sub">Same curves, one card each, sorted by the current sustain window. Click any card to add it to the comparison.</p>
+      </header>
+      <div class="sparks" id="sparks"></div>
+    </section>
+
+    <!-- ==================================================== TABLE -------->
+    <section class="card">
+      <header>
+        <h2>Life-stage table</h2>
+        <p class="sub">Each stage as a percentage of that bot's own week-one daily pace. Blank means the bot has not lived that long yet.</p>
+      </header>
+      <div class="tablewrap"><table id="table"></table></div>
+      <p class="note" id="tableNote"></p>
+      <details class="excluded" id="excluded"></details>
+    </section>
+
+  </main>
+</div>
+
+<div id="tip" role="status"></div>
+
+<script>
+'use strict';
+
+/* ==========================================================================
+   Constants
+   ========================================================================== */
+
+const SVGNS = 'http://www.w3.org/2000/svg';
+const DAY = 86400000;
+const LAUNCH_DAYS = 7;          // days 0-6 are "week one"
+const SMOOTH = 7;                // metric smoothing, days
+const CURVE_SMOOTH = 15;        // shape-only smoothing for the drawn curves
+const COLS = ['views', 'uniqueViewers', 'chats', 'uniqueChatters', 'messages'];
+
+/* Below this a bot cannot have completed the default sustain window, and its
+   last-30-days figure is still most of its life rather than its tail. */
+const MIN_ENDURANCE_AGE = 35;
+
+// Windows are half-open [from, to) in days since launch. `to: null` = open ended.
+const WINDOWS = [
+  { id: 'd8_35',   label: 'Days 8–35 (month after launch)', from: 7,   to: 35,   rec: true },
+  { id: 'd8_90',   label: 'Days 8–90',                      from: 7,   to: 90 },
+  { id: 'd36_90',  label: 'Days 36–90',                     from: 35,  to: 90 },
+  { id: 'd91_180', label: 'Days 91–180',                    from: 90,  to: 180 },
+  { id: 'd181',    label: 'Day 181 onward',                 from: 180, to: null },
+  { id: 'flat',    label: 'All post-launch, flat average',  from: 7,   to: null },
+  { id: 'rec30',   label: 'All post-launch, recency-weighted', from: 7, to: null, halfLife: 30 },
+  { id: 'last30',  label: 'Last 30 days (current pull)',    tail: 30 }
+];
+
+// Life stages shown in the table, always the same regardless of the filter.
+const STAGES = [
+  { id: 's1', label: 'd8–35',   from: 7,   to: 35 },
+  { id: 's2', label: 'd36–90',  from: 35,  to: 90 },
+  { id: 's3', label: 'd91–180', from: 90,  to: 180 },
+  { id: 's4', label: 'd181+',   from: 180, to: null }
+];
+
+// Ordinal ramp, weakest -> strongest. Cutoffs are multiples of the account-wide
+// median for the selected window, frozen at load so filtering never repaints.
+const CLASSES = [
+  { id: 'Fastest fade',  min: 0,    color: 'var(--cls-1)', light: true  },
+  { id: 'Below median',  min: 0.55, color: 'var(--cls-2)', light: true  },
+  { id: 'Typical',       min: 0.85, color: 'var(--cls-3)', light: false },
+  { id: 'Above median',  min: 1.30, color: 'var(--cls-4)', light: false },
+  { id: 'Top burner',    min: 2.00, color: 'var(--cls-5)', light: false }
+];
+/* Age tiers for the endurance bars. Weighting by age hides which end of the
+   scale a bot came from, so age gets its own visible channel: sort by score and
+   a pale bar at the top is a young bot riding recency. Light = young. */
+const AGE_BINS = [
+  { min: 0,   label: 'under 60 days',  color: 'var(--cls-1)', light: true },
+  { min: 60,  label: '60–90 days',     color: 'var(--cls-2)', light: true },
+  { min: 90,  label: '90–150 days',    color: 'var(--cls-3)', light: false },
+  { min: 150, label: '150–210 days',   color: 'var(--cls-4)', light: false },
+  { min: 210, label: '210+ days',      color: 'var(--cls-5)', light: false }
+];
+const ageBin = (n) => AGE_BINS.reduce((acc, b) => (n >= b.min ? b : acc), AGE_BINS[0]);
+
+const SERIES = ['var(--series-1)','var(--series-2)','var(--series-3)','var(--series-4)','var(--series-5)','var(--series-6)'];
+
+/* ==========================================================================
+   Helpers
+   ========================================================================== */
+
+const $ = (s, r) => (r || document).querySelector(s);
+const $$ = (s, r) => [...(r || document).querySelectorAll(s)];
+const el = (t, a, kids) => {
+  const n = document.createElement(t);
+  for (const k in (a || {})) {
+    if (k === 'class') n.className = a[k];
+    else if (k === 'text') n.textContent = a[k];
+    else n.setAttribute(k, a[k]);
+  }
+  (kids || []).forEach((c) => n.appendChild(c));
+  return n;
+};
+const svgEl = (t, a) => {
+  const n = document.createElementNS(SVGNS, t);
+  for (const k in (a || {})) n.setAttribute(k, a[k]);
+  return n;
+};
+function fmt(n) {
+  if (n == null || !isFinite(n)) return '—';
+  const x = Math.abs(n);
+  if (x >= 1e6) return (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
+  if (x >= 1e4) return Math.round(n / 1e3) + 'k';
+  if (x >= 1e3) return (n / 1e3).toFixed(1).replace(/\.0$/, '') + 'k';
+  if (x >= 10) return String(Math.round(n));
+  if (x >= 1) return n.toFixed(1);
+  return n.toFixed(2);
+}
+const pctS = (n, d) => (n == null || !isFinite(n)) ? '—' : (n * 100).toFixed(d == null ? 1 : d) + '%';
+const iso = (t) => new Date(t).toISOString().slice(0, 10);
+const addDays = (d, k) => iso(Date.parse(d + 'T00:00:00Z') + k * DAY);
+const shortDate = (d) => new Date(d + 'T00:00:00Z').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+const mean = (a) => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
+const median = (a) => { if (!a.length) return null; const s = a.slice().sort((x, y) => x - y); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+
+/* ==========================================================================
+   State
+   ========================================================================== */
+
+const CACHE_KEY = 'jai-launch-sustain-v1';
+let RAW = null;
+let MEDIANS = {};        // frozen per metric+window, computed over the whole account
+const STATE = {
+  metric: 'messages', window: 'd8_35', minvol: 100, q: '',
+  curveMode: 'all', selected: [], hiddenClasses: new Set(), ageWeight: 0.5,
+  tableSort: { key: 'sustain', dir: -1 }
+};
+
+/* ==========================================================================
+   Load
+   ========================================================================== */
+
+function boot() {
+  $('#themeBtn').addEventListener('click', () => {
+    const cur = document.documentElement.getAttribute('data-theme');
+    const isDark = cur ? cur === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
+    if (RAW) render();
+  });
+
+  const drop = $('#drop'), input = $('#file');
+  input.addEventListener('change', () => input.files[0] && readFile(input.files[0]));
+  $('#loadBtn').addEventListener('click', () => input.click());
+  ['dragenter', 'dragover'].forEach((e) => drop.addEventListener(e, (ev) => { ev.preventDefault(); drop.classList.add('hot'); }));
+  ['dragleave', 'drop'].forEach((e) => drop.addEventListener(e, (ev) => { ev.preventDefault(); drop.classList.remove('hot'); }));
+  drop.addEventListener('drop', (ev) => { const f = ev.dataTransfer.files[0]; if (f) readFile(f); });
+
+  const cached = localStorage.getItem(CACHE_KEY);
+  if (cached) { try { RAW = JSON.parse(cached); start(); } catch (e) { localStorage.removeItem(CACHE_KEY); } }
+
+  /* Convenience when the page is served rather than opened from disk: keep the
+     newest export beside index.html as jai-stats-latest.json and it loads by
+     itself. ?data=<name> overrides. Fails quietly on file:// URLs, where the
+     browser blocks the fetch and the drop zone stays. */
+  const wanted = new URLSearchParams(location.search).get('data') || 'jai-stats-latest.json';
+  if (location.protocol.startsWith('http')) {
+    fetch(wanted, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        if (!json || !Array.isArray(json.characters)) return;
+        if (RAW && RAW.exportedAt === json.exportedAt) return;   // cache already has it
+        RAW = compact(json);
+        try { localStorage.setItem(CACHE_KEY, JSON.stringify(RAW)); } catch (e) { /* too big to cache */ }
+        start();
+      })
+      .catch(() => { /* no sidecar file, use the drop zone */ });
+  }
+}
+
+function readFile(file) {
+  const fr = new FileReader();
+  fr.onload = () => {
+    let json;
+    try { json = JSON.parse(fr.result); }
+    catch (e) { $('#cacheNote').textContent = 'That file is not valid JSON.'; return; }
+    if (!json || !Array.isArray(json.characters)) { $('#cacheNote').textContent = 'No "characters" array — is that the collector output?'; return; }
+    RAW = compact(json);
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify(RAW)); }
+    catch (e) { $('#cacheNote').textContent = 'Loaded (too large to remember between visits).'; }
+    start();
+  };
+  fr.readAsText(file);
+}
+
+function start() {
+  $('#drop').classList.add('hidden');
+  $('#loadBtn').classList.remove('hidden');
+  $('#app').classList.remove('hidden');
+  wireControls();
+  render();
+}
+
+/* ==========================================================================
+   Compaction
+   --------------------------------------------------------------------------
+   The export skips zero-traffic days; a 7-day mean over holes flatters every
+   gapped bot, so every missing day is written back as an explicit zero.
+   ========================================================================== */
+
+function compact(json) {
+  const bots = [];
+  let windowStart = null;
+
+  for (const row of json.characters) {
+    const c = row.character || {};
+    const daily = (row.analytics && row.analytics.dailyEngagement) || [];
+    if (!daily.length) continue;
+
+    const by = new Map(daily.map((d) => [d.date, d]));
+    const dates = daily.map((d) => d.date).sort();
+    const first = dates[0], last = dates[dates.length - 1];
+    if (windowStart === null || first < windowStart) windowStart = first;
+
+    const series = [];
+    for (let t = Date.parse(first + 'T00:00:00Z'); t <= Date.parse(last + 'T00:00:00Z'); t += DAY) {
+      const d = by.get(iso(t));
+      series.push(COLS.map((k) => (d && d[k]) || 0));
+    }
+
+    const birth = (c.first_published_at || c.created_at || '').slice(0, 10);
+    const st = c.stats || {};
+    bots.push({
+      id: c.id,
+      name: c.name || '(untitled)',
+      birth,
+      // The counters shown on the character page. These are all-time and predate
+      // the analytics window, so for older bots they are much larger than
+      // anything the daily series can account for.
+      pubMessages: st.message || 0,
+      pubChats: st.chat || 0,
+      tags: [].concat(c.tags || [], c.custom_tags || [])
+        .map((t) => (typeof t === 'string' ? t : (t && (t.name || t.slug)) || '')).filter(Boolean),
+      start: first,
+      series
+    });
+  }
+
+  // A bot only has a real launch week if tracking was already running when it
+  // shipped. Everything older is left-censored: its series starts mid-life.
+  bots.forEach((b) => {
+    const drift = Math.abs((Date.parse(b.start) - Date.parse(b.birth || b.start)) / DAY);
+    b.hasLaunch = !!b.birth && b.birth >= windowStart && drift <= 2;
+  });
+
+  return { exportedAt: json.exportedAt, windowStart, bots };
+}
+
+/* ==========================================================================
+   Metrics
+   ========================================================================== */
+
+function movingAvg(a, w) {
+  const half = w >> 1, out = new Array(a.length);
+  for (let i = 0; i < a.length; i++) {
+    let s = 0, n = 0;
+    for (let j = Math.max(0, i - half); j <= Math.min(a.length - 1, i + half); j++) { s += a[j]; n++; }
+    out[i] = s / n;
+  }
+  return out;
+}
+
+/* Average daily rate inside a window, or null when the bot has not lived long
+   enough to fill a fair share of it. Without that guard a bot aged 40 days
+   would report a "days 36-90" figure built from five days. */
+function windowRate(raw, win) {
+  const n = raw.length;
+  if (win.tail) {
+    if (n < Math.min(win.tail, 14)) return null;
+    return mean(raw.slice(Math.max(0, n - win.tail)));
+  }
+  const from = win.from;
+  if (n <= from + 6) return null;                       // needs a week inside it
+  const to = win.to == null ? n : Math.min(win.to, n);
+  const slice = raw.slice(from, to);
+  if (!slice.length) return null;
+  /* A closed window must be COMPLETE. A bot 25 days old scored on "days 8-35"
+     is being measured over its freshest fortnight and nothing else, which is
+     exactly the recency skew these windows exist to remove. */
+  if (win.to != null && n < win.to) return null;
+  if (win.halfLife) {
+    let num = 0, den = 0;
+    for (let i = 0; i < slice.length; i++) {
+      const age = slice.length - 1 - i;
+      const w = Math.pow(0.5, age / win.halfLife);
+      num += slice[i] * w; den += w;
+    }
+    return den ? num / den : null;
+  }
+  return mean(slice);
+}
+
+function analyse(bot, mi, win) {
+  const raw = bot.series.map((r) => r[mi]);
+  const n = raw.length;
+  const sm = movingAvg(raw, SMOOTH);
+
+  const launchSlice = raw.slice(0, LAUNCH_DAYS);
+  const launchMean = bot.hasLaunch && n >= LAUNCH_DAYS ? mean(launchSlice) : null;
+  const launchTotal = bot.hasLaunch ? launchSlice.reduce((a, b) => a + b, 0) : null;
+
+  const sustainRate = windowRate(raw, win);
+  const sustain = (launchMean && sustainRate != null && launchMean > 0) ? sustainRate / launchMean : null;
+
+  const stages = {};
+  STAGES.forEach((s) => {
+    const r = windowRate(raw, s);
+    stages[s.id] = (launchMean && r != null && launchMean > 0) ? r / launchMean : null;
+  });
+
+  const current = windowRate(raw, { tail: 30 });
+  const total = raw.reduce((a, b) => a + b, 0);
+
+  /* Endurance: what it still pulls, weighted by how long it has been pulling
+     it. 100 a day at eight months is worth more than 100 a day at six weeks,
+     because only one of them has proved it lasts. The exponent is exposed as a
+     control rather than baked in — at 0 this is just current pull. */
+  const endurance = (current != null && n >= MIN_ENDURANCE_AGE)
+    ? current * Math.pow(n / 30, STATE.ageWeight)
+    : null;
+
+  /* Lifetime as the site itself counts it, plus how much of that the daily
+     series can account for. The gap is life lived before tracking began. */
+  const trackedMessages = bot.series.reduce((a, r) => a + r[COLS.indexOf('messages')], 0);
+  const inSiteUnits = CAL ? trackedMessages * CAL.factor : null;
+  const preWindow = (CAL && bot.pubMessages > 0) ? Math.max(0, bot.pubMessages - inSiteUnits) : null;
+  const site = {
+    messages: bot.pubMessages,
+    chats: bot.pubChats,
+    trackedInSiteUnits: inSiteUnits,
+    preWindow,
+    preWindowShare: (preWindow != null && bot.pubMessages > 0) ? preWindow / bot.pubMessages : null
+  };
+
+  /* Loyalty, measured over the last 30 days only — these are ratios between
+     columns, so they are read off the raw series rather than the metric the
+     rest of the page is filtered by.
+       repeat  chats per unique chatter, i.e. do people come back within a day
+       depth   messages per chat, i.e. do they stay once they open one
+       convert unique chatters per unique viewer, i.e. did they arrive on
+               purpose or just scroll past. This is the one that tracks age. */
+  const tail = bot.series.slice(Math.max(0, n - 30));
+  const col = (k) => tail.reduce((a, r) => a + r[COLS.indexOf(k)], 0);
+  const c30 = col('chats'), u30 = col('uniqueChatters'), m30 = col('messages'), v30 = col('uniqueViewers');
+  const loyalty = {
+    repeat: u30 ? c30 / u30 : null,
+    depth: c30 ? m30 / c30 : null,
+    convert: v30 ? u30 / v30 : null,
+    volume: m30
+  };
+
+  /* Curve: every day as a share of the launch-week pace. Drawn curves get a
+     wider window than the metrics do — at 20 messages a day a 7-day mean is
+     still mostly noise, and this chart is asked about shape, not level. */
+  const smCurve = movingAvg(raw, CURVE_SMOOTH);
+  const curve = launchMean > 0 ? smCurve.map((v) => v / launchMean) : null;
+
+  let peakIdx = 0;
+  for (let i = 1; i < n; i++) if (sm[i] > sm[peakIdx]) peakIdx = i;
+
+  return {
+    bot, raw, sm, n, total, launchMean, launchTotal, sustainRate, sustain,
+    stages, current, endurance, curve, loyalty, site, peakIdx, peakDate: addDays(bot.start, peakIdx),
+    hasLaunch: bot.hasLaunch
+  };
+}
+
+function classify(sustain, med) {
+  if (sustain == null || !med) return null;
+  const x = sustain / med;
+  let out = CLASSES[0];
+  CLASSES.forEach((c) => { if (x >= c.min) out = c; });
+  return out;
+}
+
+/* Medians are computed once over the whole account for every metric/window
+   pair, so a class never changes because a filter removed somebody. */
+function freezeMedians() {
+  MEDIANS = {};
+  COLS.forEach((metric) => {
+    const mi = COLS.indexOf(metric);
+    WINDOWS.forEach((win) => {
+      const vals = RAW.bots.map((b) => analyse(b, mi, win))
+        .filter((r) => r.sustain != null && r.launchMean >= 50)
+        .map((r) => r.sustain);
+      MEDIANS[metric + '|' + win.id] = median(vals);
+    });
+  });
+}
+
+/* ---------------------------------------------------------- calibration
+   The character page counter and the analytics series count different events:
+   across bots that lived entirely inside the tracking window the ratio is a
+   tight 2.3-2.7, so one is a fixed subset of the other and the factor can be
+   measured from this account rather than assumed. It is used only to express
+   tracked volume in site-counter units, which is what makes "how much of this
+   bot's life happened before tracking" answerable.
+   The chat counters do NOT hold a stable ratio, so they are never converted. */
+let CAL = null;
+
+function calibrate() {
+  const mi = COLS.indexOf('messages');
+  const ratios = RAW.bots
+    .filter((b) => b.hasLaunch && b.pubMessages > 0)
+    .map((b) => {
+      const tracked = b.series.reduce((a, r) => a + r[mi], 0);
+      return tracked > 2000 ? b.pubMessages / tracked : null;
+    })
+    .filter((x) => x != null && isFinite(x));
+  const all = ratios.slice().sort((a, b) => a - b);
+  CAL = ratios.length >= 5
+    ? { factor: median(ratios), n: ratios.length, lo: all[0], hi: all[all.length - 1] }
+    : null;
+}
+
+const curMedian = () => MEDIANS[STATE.metric + '|' + STATE.window];
+const curWindow = () => WINDOWS.find((w) => w.id === STATE.window);
+const metricLabel = () => $('#metric').selectedOptions[0].textContent.toLowerCase();
+
+/* ==========================================================================
+   View model
+   ========================================================================== */
+
+function rows() {
+  const mi = COLS.indexOf(STATE.metric);
+  const win = curWindow();
+  const med = curMedian();
+  const all = RAW.bots.map((b) => {
+    const r = analyse(b, mi, win);
+    r.cls = classify(r.sustain, med);
+    return r;
+  });
+
+  const q = STATE.q.trim().toLowerCase();
+  const match = (r) => !q || r.bot.name.toLowerCase().includes(q) || r.bot.tags.some((t) => t.toLowerCase().includes(q));
+
+  const everyone = all.filter(match);          // veterans section: nobody is dropped
+  const eligible = everyone.filter((r) => r.hasLaunch && r.launchMean != null && r.launchMean >= STATE.minvol);
+  const excluded = everyone.filter((r) => !eligible.includes(r));
+  const visible = eligible.filter((r) => !r.cls || !STATE.hiddenClasses.has(r.cls.id));
+  return { all, everyone, eligible, excluded, visible };
+}
+
+/* ==========================================================================
+   Tooltip
+   ========================================================================== */
+
+const tip = $('#tip');
+function showTip(evt, title, list) {
+  tip.innerHTML = '';
+  tip.appendChild(el('div', { class: 't', text: title }));
+  list.forEach(([k, v]) => {
+    const r = el('div', { class: 'r' });
+    r.appendChild(el('span', { text: k }));
+    r.appendChild(el('b', { text: v }));
+    tip.appendChild(r);
+  });
+  tip.style.opacity = '1';
+  const rect = tip.getBoundingClientRect();
+  let x = evt.clientX + 14, y = evt.clientY + 14;
+  if (x + rect.width > innerWidth - 8) x = evt.clientX - rect.width - 14;
+  if (y + rect.height > innerHeight - 8) y = evt.clientY - rect.height - 14;
+  tip.style.left = x + 'px'; tip.style.top = y + 'px';
+}
+const hideTip = () => { tip.style.opacity = '0'; };
+
+function tipRows(r) {
+  const out = [['Class', r.cls ? r.cls.id : 'not classified'], ['Week-1 per day', fmt(r.launchMean)]];
+  if (r.sustain != null) {
+    out.push([curWindow().label.replace(/ \(.*\)/, '') + ' per day', fmt(r.sustainRate)]);
+    out.push(['Held vs week 1', pctS(r.sustain)]);
+    out.push(['Vs account median', (r.sustain / curMedian()).toFixed(2) + '×']);
+  } else {
+    out.push([curWindow().label.replace(/ \(.*\)/, ''), 'not lived that long']);
+  }
+  out.push(['Last 30 days per day', fmt(r.current)]);
+  out.push(['Lifetime ' + STATE.metric, fmt(r.total)]);
+  out.push(['Age', r.n + ' days']);
+  return out;
+}
+
+/* ==========================================================================
+   Render
+   ========================================================================== */
+
+function render() {
+  $$('.mname').forEach((n) => { n.textContent = metricLabel(); });
+  const v = rows();
+  renderTiles(v);
+  renderLaunch(v);
+  renderSustain(v);
+  renderClassLegend(v);
+  renderVeterans(v);
+  renderPreWindow(v);
+  renderLoyalty(v);
+  renderCurves(v);
+  renderScatter(v);
+  renderSparks(v);
+  renderTable(v);
+}
+
+/* -------------------------------------------------------------- tiles */
+function renderTiles(v) {
+  const box = $('#tiles'); box.innerHTML = '';
+  const e = v.eligible;
+  const launchVol = e.reduce((a, r) => a + (r.launchTotal || 0), 0);
+  const lifeVol = e.reduce((a, r) => a + r.total, 0);
+  const curVol = e.reduce((a, r) => a + (r.current || 0) * 30, 0);
+  const med = curMedian();
+  const burners = e.filter((r) => r.cls && r.cls.id === 'Top burner').length;
+
+  [
+    ['Bots with a launch week', String(e.length), v.excluded.length + ' excluded'],
+    ['Week-1 ' + STATE.metric, fmt(launchVol), lifeVol ? pctS(launchVol / lifeVol, 0) + ' of all lifetime volume' : ''],
+    ['Median sustain', med == null ? '—' : pctS(med), 'of week-1 pace, ' + curWindow().label.replace(/ \(.*\)/, '').toLowerCase()],
+    ['Last 30 days', fmt(curVol), lifeVol ? pctS(curVol / lifeVol, 0) + ' of lifetime' : ''],
+    ['Top burners', String(burners), 'at least 2× the median']
+  ].forEach(([k, val, n]) => {
+    box.appendChild(el('div', { class: 'tile' }, [
+      el('div', { class: 'v', text: val }),
+      el('div', { class: 'k', text: k }),
+      el('div', { class: 'n', text: n || '' })
+    ]));
+  });
+}
+
+/* ------------------------------------------------------- ranked bar list */
+function barList(host, list, opts) {
+  host.innerHTML = '';
+  if (!list.length) { host.appendChild(el('p', { class: 'empty', text: 'Nothing matches these filters.' })); return; }
+  const max = Math.max(...list.map(opts.value)) || 1;
+  list.forEach((r) => {
+    const val = opts.value(r);
+    const on = STATE.selected.includes(r.bot.id);
+    const fill = el('div', { class: 'fill', style: 'width:' + Math.max(1.5, (val / max) * 100) + '%;background:' + opts.color(r) });
+    const b = el('button', { class: 'bar', type: 'button', 'aria-pressed': String(on) }, [
+      el('div', { class: 'lbl', text: r.bot.name }),
+      el('div', { class: 'track' }, [fill]),
+      el('div', { class: 'val', text: opts.text(r) })
+    ]);
+    b.addEventListener('click', () => toggleSelect(r.bot.id));
+    b.addEventListener('mousemove', (e) => showTip(e, r.bot.name, tipRows(r)));
+    b.addEventListener('mouseleave', hideTip);
+    host.appendChild(b);
+  });
+}
+
+function renderLaunch(v) {
+  const list = v.visible.slice().sort((a, b) => b.launchMean - a.launchMean);
+  barList($('#launchBars'), list, {
+    value: (r) => r.launchMean,
+    color: () => 'var(--series-1)',
+    text: (r) => fmt(r.launchMean) + '/d'
+  });
+  const tot = list.reduce((a, r) => a + r.total, 0);
+  const lv = list.reduce((a, r) => a + r.launchTotal, 0);
+  $('#launchNote').textContent = list.length
+    ? 'Week one is ' + pctS(lv / tot, 0) + ' of all lifetime ' + STATE.metric + ' across these ' + list.length + ' bots, from ' + pctS(LAUNCH_DAYS / (list.reduce((a, r) => a + r.n, 0) / list.length), 0) + ' of their days alive.'
+    : '';
+}
+
+function renderSustain(v) {
+  const win = curWindow();
+  const med = curMedian();
+  const list = v.visible.filter((r) => r.sustain != null).sort((a, b) => b.sustain - a.sustain);
+  barList($('#sustainBars'), list, {
+    value: (r) => r.sustain,
+    color: (r) => r.cls ? r.cls.color : 'var(--cls-na)',
+    text: (r) => pctS(r.sustain, 1)
+  });
+
+  $('#sustainSub').textContent =
+    win.label + ', as a share of that bot\'s own week-one daily pace. ' +
+    (win.rec ? 'This window is the default because it is the least distorted by age: every bot is measured over the same slice of its own life. ' : '') +
+    'Median across the account is ' + pctS(med) + '.';
+
+  const missing = v.visible.length - list.length;
+  $('#sustainNote').textContent = missing
+    ? missing + ' bot' + (missing === 1 ? ' is' : 's are') + ' too young to have reached this window and are left out rather than shown as zero.'
+    : '';
+}
+
+function renderClassLegend(v) {
+  const counts = {};
+  v.eligible.forEach((r) => { if (r.cls) counts[r.cls.id] = (counts[r.cls.id] || 0) + 1; });
+  const box = $('#clsLegend'); box.innerHTML = '';
+  const med = curMedian();
+  CLASSES.slice().reverse().forEach((c) => {
+    if (!counts[c.id]) return;
+    const on = !STATE.hiddenClasses.has(c.id);
+    const range = c.min ? '≥ ' + pctS(c.min * med, 1) : '< ' + pctS(CLASSES[1].min * med, 1);
+    const b = el('button', { type: 'button', 'aria-pressed': String(on) }, [
+      el('i', { style: 'background:' + c.color }),
+      el('span', { text: c.id + ' · ' + range + ' (' + counts[c.id] + ')' })
+    ]);
+    b.addEventListener('click', () => {
+      STATE.hiddenClasses.has(c.id) ? STATE.hiddenClasses.delete(c.id) : STATE.hiddenClasses.add(c.id);
+      render();
+    });
+    box.appendChild(b);
+  });
+}
+
+/* ----------------------------------------------------------- veterans */
+function renderVeterans(v) {
+  const w = STATE.ageWeight;
+  const list = v.everyone.filter((r) => r.endurance != null && r.endurance > 0)
+    .sort((a, b) => b.endurance - a.endurance);
+
+  $('#endSub').textContent =
+    'What a bot still pulls per day over the last 30 days' +
+    (w ? ', weighted by how long it has been doing it' : '') +
+    '. Everything under ' + MIN_ENDURANCE_AGE + ' days old is left out: a young bot\'s last 30 days is most of its life, ' +
+    'so it would be competing on recency rather than endurance. Pre-tracking veterans are included — this metric needs no launch week.' +
+    (w ? ' Score = last-30 per day × (age ÷ 30)' + (w === 0.5 ? ' ^½.' : '.') : '') +
+    ' Bars are shaded by age, so a pale bar near the top is a young bot whose score is coming from recency, not staying power.';
+
+  barList($('#vetBars'), list, {
+    value: (r) => r.endurance,
+    color: (r) => ageBin(r.n).color,
+    text: (r) => fmt(r.current) + '/d · ' + r.n + 'd'
+  });
+
+  const counts = {};
+  list.forEach((r) => { const b = ageBin(r.n); counts[b.label] = (counts[b.label] || 0) + 1; });
+  const legend = $('#ageLegend');
+  legend.innerHTML = '';
+  AGE_BINS.forEach((b) => {
+    if (!counts[b.label]) return;
+    legend.appendChild(el('span', { class: 'static' }, [
+      el('i', { style: 'background:' + b.color }),
+      el('span', { text: b.label + ' (' + counts[b.label] + ')' })
+    ]));
+  });
+
+  // The headline the lifetime column hides: veterans out-earning younger bots
+  // that have far bigger totals.
+  const upsets = [];
+  list.forEach((vet) => {
+    if (vet.n < 120) return;
+    const beaten = list.filter((y) => y.n < 90 && y.site.messages > vet.site.messages * 1.4 && y.current < vet.current);
+    if (beaten.length) upsets.push({ vet, beaten });
+  });
+
+  if (upsets.length) {
+    const best = upsets[0];
+    $('#vetNote').textContent =
+      best.vet.bot.name + ' is ' + best.vet.n + ' days old with ' + fmt(best.vet.site.messages) + ' messages all time, ' +
+      'and still out-earns ' + best.beaten.length + ' bot' + (best.beaten.length === 1 ? '' : 's') +
+      ' under 90 days old that each have at least 40% more of them — ' +
+      best.beaten.slice(0, 3).map((b) => b.bot.name + ' (' + fmt(b.site.messages) + ')').join(', ') + '. ' +
+      upsets.length + ' veteran' + (upsets.length === 1 ? '' : 's') + ' manage this, which is the case for reading this list ' +
+      'rather than the lifetime column.';
+  } else {
+    $('#vetNote').textContent = 'No bot over 120 days old currently out-earns a younger bot with a bigger lifetime total.';
+  }
+}
+
+/* --------------------------------------------------- pre-window volume */
+function renderPreWindow(v) {
+  const host = $('#preBars'), legend = $('#preLegend');
+  host.innerHTML = ''; legend.innerHTML = '';
+
+  if (!CAL) {
+    $('#calSub').textContent = 'Not enough bots inside the tracking window to calibrate the two counters against each other.';
+    return;
+  }
+
+  $('#calSub').textContent =
+    'The character page counts all-time; the analytics series only goes back to ' + shortDate(RAW.windowStart) + '. ' +
+    'Across the ' + CAL.n + ' bots that lived entirely inside the window the two counters hold a steady ratio (' +
+    CAL.lo.toFixed(2) + '–' + CAL.hi.toFixed(2) + ', median ' + CAL.factor.toFixed(2) + '), so tracked volume can be ' +
+    'restated in site-counter units and the remainder is what happened before tracking began.';
+
+  const list = v.everyone
+    .filter((r) => r.site.messages > 0 && r.site.preWindow != null)
+    .sort((a, b) => b.site.messages - a.site.messages)
+    .slice(0, 30);
+
+  if (!list.length) { host.appendChild(el('p', { class: 'empty', text: 'No site counters in this export.' })); return; }
+
+  /* The calibration is a median, so a bot that genuinely has no history before
+     the window still lands a percent or two either side of zero. Anything under
+     this is noise and must not be drawn, or every bot grows a false orange tip. */
+  const MATERIAL = 0.02;
+
+  const max = Math.max(...list.map((r) => r.site.messages));
+  list.forEach((r) => {
+    const material = r.site.preWindowShare != null && r.site.preWindowShare >= MATERIAL;
+    const pre = material ? r.site.preWindow : 0;
+    const tracked = Math.min(r.site.messages, r.site.messages - pre);
+    const track = el('div', { class: 'track' });
+    // two segments separated by a 2px surface gap, not a border
+    track.appendChild(el('div', {
+      class: 'fill',
+      style: 'left:0;width:' + Math.max(0.5, (tracked / max) * 100) + '%;background:var(--series-1);' +
+        'border-radius:0 ' + (pre ? '0 0' : '4px 4px') + ' 0'
+    }));
+    if (pre > 0) {
+      track.appendChild(el('div', {
+        class: 'fill',
+        style: 'left:calc(' + ((tracked / max) * 100) + '% + 2px);width:' +
+          Math.max(0.5, (pre / max) * 100) + '%;background:var(--series-2);border-radius:0 4px 4px 0'
+      }));
+    }
+    // On a shared scale a small veteran's missing history is a few pixels wide,
+    // so the share rides in the label where it stays readable at any size.
+    const on = STATE.selected.includes(r.bot.id);
+    const b = el('button', { class: 'bar', type: 'button', 'aria-pressed': String(on) }, [
+      el('div', { class: 'lbl', text: r.bot.name }),
+      track,
+      el('div', { class: 'val', text: fmt(r.site.messages) + (material ? '  ·  ' + pctS(r.site.preWindowShare, 0) + ' pre' : '') })
+    ]);
+    b.addEventListener('click', () => toggleSelect(r.bot.id));
+    b.addEventListener('mousemove', (e) => showTip(e, r.bot.name, [
+      ['Site counter, all time', fmt(r.site.messages) + ' messages'],
+      ['Site counter, chats', fmt(r.site.chats)],
+      ['Seen by tracking', fmt(r.site.trackedInSiteUnits) + ' (' + fmt(r.total) + ' raw)'],
+      ['Before tracking began', pre > 0 ? fmt(pre) + '  (' + pctS(r.site.preWindowShare, 0) + ')' : 'none'],
+      ['Age in tracking', r.n + ' days']
+    ]));
+    b.addEventListener('mouseleave', hideTip);
+    host.appendChild(b);
+  });
+
+  legend.appendChild(el('span', { class: 'static' }, [el('i', { style: 'background:var(--series-1)' }), el('span', { text: 'Recorded by analytics' })]));
+  legend.appendChild(el('span', { class: 'static' }, [el('i', { style: 'background:var(--series-2)' }), el('span', { text: 'Before tracking began (estimated)' })]));
+
+  // Counted over the whole account, not just the 30 bots the chart has room for.
+  const hidden = v.everyone.filter((r) => r.site.preWindowShare > 0.3)
+    .sort((a, b) => b.site.preWindow - a.site.preWindow);
+  if (hidden.length) {
+    const top = hidden[0];
+    $('#preNote').textContent =
+      top.bot.name + ' reads ' + fmt(top.total) + ' in the analytics series but ' + fmt(top.site.messages) +
+      ' on its own page — about ' + pctS(top.site.preWindowShare, 0) + ' of its life ran before tracking existed. ' +
+      hidden.length + ' bots are understated by more than a third this way, and every one of them is a veteran. ' +
+      'Any ranking built on the daily series alone quietly punishes them.';
+  } else {
+    $('#preNote').textContent = 'No bot has a meaningful amount of life before the tracking window.';
+  }
+}
+
+function renderLoyalty(v) {
+  const host = $('#loyalty'); host.innerHTML = '';
+  // Ratios need enough traffic to mean anything; a bot with nine viewers can
+  // post a 100% conversion rate by accident.
+  const pts = v.everyone.filter((r) => r.loyalty.convert != null && r.loyalty.volume >= 600);
+  if (pts.length < 4) { host.appendChild(el('p', { class: 'empty', text: 'Not enough currently-active bots to measure this.' })); return; }
+
+  const W = 1000, H = 380, M = { t: 16, r: 26, b: 50, l: 56 };
+  const pw = W - M.l - M.r, ph = H - M.t - M.b;
+  const maxAge = Math.max(...pts.map((p) => p.n));
+  const maxConv = Math.min(1, Math.max(...pts.map((p) => p.loyalty.convert)) * 1.08);
+  const X = (d) => M.l + (d / maxAge) * pw;
+  const Y = (c) => M.t + ph - (c / maxConv) * ph;
+
+  const svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, style: 'width:100%;height:auto;display:block', role: 'img', 'aria-label': 'Viewer to chatter conversion against bot age' });
+
+  for (let k = 0; k <= 4; k++) {
+    const c = (maxConv / 4) * k;
+    svg.appendChild(svgEl('line', { x1: M.l, x2: W - M.r, y1: Y(c), y2: Y(c), stroke: 'var(--grid)', 'stroke-width': '1' }));
+    const t = svgEl('text', { x: M.l - 8, y: Y(c) + 3.5, 'text-anchor': 'end', class: 'axis-label' });
+    t.textContent = Math.round(c * 100) + '%';
+    svg.appendChild(t);
+  }
+  for (let k = 0; k <= 5; k++) {
+    const d = Math.round((k / 5) * maxAge);
+    const t = svgEl('text', { x: X(d), y: M.t + ph + 18, 'text-anchor': 'middle', class: 'axis-label' });
+    t.textContent = d + 'd';
+    svg.appendChild(t);
+  }
+  svg.appendChild(svgEl('line', { x1: M.l, x2: W - M.r, y1: M.t + ph, y2: M.t + ph, stroke: 'var(--axis)', 'stroke-width': '1' }));
+  const xt = svgEl('text', { x: M.l + pw / 2, y: H - 10, 'text-anchor': 'middle', class: 'axis-title' });
+  xt.textContent = 'Days of tracked life';
+  svg.appendChild(xt);
+  const yt = svgEl('text', { x: 14, y: M.t + ph / 2, 'text-anchor': 'middle', class: 'axis-title', transform: 'rotate(-90 14 ' + (M.t + ph / 2) + ')' });
+  yt.textContent = 'Viewers who open a chat';
+  svg.appendChild(yt);
+
+  // least-squares fit, drawn because the relationship is the whole point
+  const ax = pts.map((p) => p.n), ay = pts.map((p) => p.loyalty.convert);
+  const r = pearson(ax, ay);
+  const mx = mean(ax), my = mean(ay);
+  let num = 0, den = 0;
+  for (let i = 0; i < ax.length; i++) { num += (ax[i] - mx) * (ay[i] - my); den += (ax[i] - mx) ** 2; }
+  const slope = den ? num / den : 0, intercept = my - slope * mx;
+  svg.appendChild(svgEl('line', {
+    x1: X(0), y1: Y(Math.max(0, Math.min(maxConv, intercept))),
+    x2: X(maxAge), y2: Y(Math.max(0, Math.min(maxConv, intercept + slope * maxAge))),
+    stroke: 'var(--ink-1)', 'stroke-width': '2', opacity: '0.4'
+  }));
+
+  pts.forEach((p) => {
+    const g = svgEl('g', { style: 'cursor:pointer' });
+    g.appendChild(svgEl('circle', { cx: X(p.n), cy: Y(p.loyalty.convert), r: '13', fill: 'transparent' }));
+    g.appendChild(svgEl('circle', {
+      cx: X(p.n), cy: Y(p.loyalty.convert), r: '5.5', fill: 'var(--series-1)',
+      stroke: 'var(--surface-1)', 'stroke-width': '2'
+    }));
+    g.addEventListener('mousemove', (e) => showTip(e, p.bot.name, [
+      ['Age', p.n + ' days'],
+      ['Viewers → chatters', pctS(p.loyalty.convert, 0)],
+      ['Chats per chatter', p.loyalty.repeat == null ? '—' : p.loyalty.repeat.toFixed(2)],
+      ['Messages per chat', p.loyalty.depth == null ? '—' : p.loyalty.depth.toFixed(1)],
+      ['Last 30 days per day', fmt(p.current)]
+    ]));
+    g.addEventListener('mouseleave', hideTip);
+    g.addEventListener('click', () => toggleSelect(p.bot.id));
+    svg.appendChild(g);
+  });
+
+  // label the strongest veterans and the weakest newcomers
+  const label = new Set();
+  pts.slice().sort((a, b) => b.n - a.n).slice(0, 2).forEach((p) => label.add(p));
+  pts.slice().sort((a, b) => b.loyalty.convert - a.loyalty.convert).slice(0, 2).forEach((p) => label.add(p));
+  pts.slice().sort((a, b) => a.loyalty.convert - b.loyalty.convert).slice(0, 2).forEach((p) => label.add(p));
+  label.forEach((p) => {
+    const px = X(p.n), py = Y(p.loyalty.convert);
+    const nm = p.bot.name.length > 24 ? p.bot.name.slice(0, 23) + '…' : p.bot.name;
+    const right = px + 10 + nm.length * 5.5 < W - M.r;
+    const t = svgEl('text', { x: right ? px + 10 : px - 10, y: py + 3.5, class: 'axis-label', fill: 'var(--ink-2)', 'text-anchor': right ? 'start' : 'end' });
+    t.textContent = nm;
+    svg.appendChild(t);
+  });
+
+  host.appendChild(svg);
+
+  const oldOnes = pts.filter((p) => p.n >= 150), newOnes = pts.filter((p) => p.n < 60);
+  const cmp = (oldOnes.length >= 3 && newOnes.length >= 3)
+    ? ' Bots over 150 days convert ' + pctS(mean(oldOnes.map((p) => p.loyalty.convert)), 0) +
+      ' of viewers against ' + pctS(mean(newOnes.map((p) => p.loyalty.convert)), 0) + ' for bots under 60 days.'
+    : '';
+  $('#loyaltyNote').textContent =
+    'r = ' + r.toFixed(2) + ' across ' + pts.length + ' currently-active bots.' + cmp +
+    ' Repeat sessions per user do not rise with age (r = ' + pearson(ax, pts.map((p) => p.loyalty.repeat || 0)).toFixed(2) +
+    '), so this is not the same people chatting more — it is that the people who still arrive are the ones who came looking.';
+}
+
+/* ------------------------------------------------------------- curves */
+function renderCurves(v) {
+  const host = $('#curves'), legend = $('#curveLegend');
+  host.innerHTML = ''; legend.innerHTML = '';
+
+  const pool = v.visible.filter((r) => r.curve && r.n > LAUNCH_DAYS);
+  const picked = pool.filter((r) => STATE.selected.includes(r.bot.id));
+  const show = STATE.curveMode === 'sel' ? picked : pool;
+  if (!show.length) {
+    host.appendChild(el('p', { class: 'empty', text: STATE.curveMode === 'sel' ? 'Select some bots first.' : 'Nothing matches these filters.' }));
+    return;
+  }
+
+  const W = 1000, H = 420, M = { t: 16, r: 128, b: 48, l: 52 };
+  const pw = W - M.l - M.r, ph = H - M.t - M.b;
+  const maxDay = Math.max(...show.map((r) => r.n - 1));
+  const FLOOR = 0.004;                                    // 0.4%, the log floor
+  const X = (d) => M.l + (d / Math.max(1, maxDay)) * pw;
+  const Y = (val) => {
+    const c = Math.max(FLOOR, Math.min(2, val));
+    return M.t + ph - ((Math.log10(c) - Math.log10(FLOOR)) / (Math.log10(2) - Math.log10(FLOOR))) * ph;
+  };
+
+  const svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, style: 'width:100%;height:auto;display:block', role: 'img', 'aria-label': 'Decay curves aligned to launch day' });
+
+  [2, 1, .5, .2, .1, .05, .02, .01, .004].forEach((g) => {
+    svg.appendChild(svgEl('line', { x1: M.l, x2: W - M.r, y1: Y(g), y2: Y(g), stroke: 'var(--grid)', 'stroke-width': '1' }));
+    const t = svgEl('text', { x: M.l - 8, y: Y(g) + 3.5, 'text-anchor': 'end', class: 'axis-label' });
+    t.textContent = (g * 100).toFixed(g < .05 ? 1 : 0) + '%';
+    svg.appendChild(t);
+  });
+  svg.appendChild(svgEl('line', { x1: M.l, x2: W - M.r, y1: Y(1), y2: Y(1), stroke: 'var(--axis)', 'stroke-width': '1' }));
+  const wk = svgEl('text', { x: M.l + 6, y: Y(1) - 6, class: 'axis-label', fill: 'var(--ink-2)' });
+  wk.textContent = 'week-1 pace';
+  svg.appendChild(wk);
+
+  for (let k = 0; k <= 5; k++) {
+    const d = Math.round((k / 5) * maxDay);
+    const t = svgEl('text', { x: X(d), y: M.t + ph + 18, 'text-anchor': 'middle', class: 'axis-label' });
+    t.textContent = 'day ' + d;
+    svg.appendChild(t);
+  }
+  svg.appendChild(svgEl('line', { x1: M.l, x2: W - M.r, y1: M.t + ph, y2: M.t + ph, stroke: 'var(--axis)', 'stroke-width': '1' }));
+  const xt = svgEl('text', { x: M.l + pw / 2, y: H - 10, 'text-anchor': 'middle', class: 'axis-title' });
+  xt.textContent = 'Days since launch';
+  svg.appendChild(xt);
+  const yt = svgEl('text', { x: 13, y: M.t + ph / 2, 'text-anchor': 'middle', class: 'axis-title', transform: 'rotate(-90 13 ' + (M.t + ph / 2) + ')' });
+  yt.textContent = 'Share of week-1 daily pace (log)';
+  svg.appendChild(yt);
+
+  const path = (r) => {
+    let d = '';
+    for (let i = 0; i < r.n; i++) d += (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(r.curve[i]).toFixed(1);
+    return d;
+  };
+
+  // context layer: everything, faint
+  if (STATE.curveMode === 'all') {
+    show.forEach((r) => {
+      if (picked.includes(r)) return;
+      svg.appendChild(svgEl('path', { d: path(r), fill: 'none', stroke: r.cls ? r.cls.color : 'var(--cls-na)', 'stroke-width': '1.25', opacity: picked.length ? '0.22' : '0.5' }));
+    });
+
+    // account median curve, so the eye has a reference shape
+    const medPath = [];
+    for (let i = 0; i < maxDay + 1; i++) {
+      const vals = show.filter((r) => i < r.n).map((r) => r.curve[i]);
+      if (vals.length < 4) break;
+      medPath.push(median(vals));
+    }
+    if (medPath.length > 7) {
+      let d = '';
+      medPath.forEach((val, i) => { d += (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(val).toFixed(1); });
+      svg.appendChild(svgEl('path', { d, fill: 'none', stroke: 'var(--ink-1)', 'stroke-width': '2.5', opacity: '0.55' }));
+      const t = svgEl('text', { x: X(medPath.length - 1) + 8, y: Y(medPath[medPath.length - 1]) + 3.5, class: 'axis-label', fill: 'var(--ink-1)' });
+      t.textContent = 'account median';
+      svg.appendChild(t);
+      legend.appendChild(el('span', { class: 'static' }, [
+        el('i', { style: 'background:var(--ink-1);opacity:.55' }),
+        el('span', { text: 'Account median curve' })
+      ]));
+    }
+  }
+
+  // highlight layer
+  picked.forEach((r, i) => {
+    const color = SERIES[i % SERIES.length];
+    svg.appendChild(svgEl('path', { d: path(r), fill: 'none', stroke: color, 'stroke-width': '2.25', 'stroke-linejoin': 'round' }));
+    const lx = X(r.n - 1), ly = Y(r.curve[r.n - 1]);
+    svg.appendChild(svgEl('circle', { cx: lx, cy: ly, r: '4', fill: color, stroke: 'var(--surface-1)', 'stroke-width': '2' }));
+    const t = svgEl('text', { x: Math.min(lx + 9, W - M.r + 4), y: ly + 3.5, class: 'axis-label', fill: 'var(--ink-2)' });
+    t.textContent = r.bot.name.length > 20 ? r.bot.name.slice(0, 19) + '…' : r.bot.name;
+    svg.appendChild(t);
+
+    const b = el('button', { type: 'button', 'aria-pressed': 'true', title: 'Remove' }, [
+      el('i', { style: 'background:' + color }), el('span', { text: r.bot.name })
+    ]);
+    b.addEventListener('click', () => toggleSelect(r.bot.id));
+    legend.appendChild(b);
+  });
+
+  // crosshair
+  const hair = svgEl('line', { y1: M.t, y2: M.t + ph, stroke: 'var(--axis)', 'stroke-width': '1', opacity: '0' });
+  svg.appendChild(hair);
+  const hit = svgEl('rect', { x: M.l, y: M.t, width: pw, height: ph, fill: 'transparent' });
+  hit.addEventListener('mousemove', (ev) => {
+    const box = svg.getBoundingClientRect();
+    const f = Math.max(0, Math.min(1, ((ev.clientX - box.left) / box.width * W - M.l) / pw));
+    const day = Math.round(f * maxDay);
+    hair.setAttribute('x1', X(day)); hair.setAttribute('x2', X(day)); hair.setAttribute('opacity', '1');
+    const src = picked.length ? picked : show;
+    const list = src.filter((r) => day < r.n)
+      .sort((a, b) => b.curve[day] - a.curve[day]).slice(0, 8)
+      .map((r) => [r.bot.name.length > 26 ? r.bot.name.slice(0, 25) + '…' : r.bot.name, pctS(r.curve[day], 1)]);
+    showTip(ev, 'Day ' + day + (picked.length ? '' : ' · top ' + list.length), list.length ? list : [['—', 'no bot this old']]);
+  });
+  hit.addEventListener('mouseleave', () => { hair.setAttribute('opacity', '0'); hideTip(); });
+  svg.appendChild(hit);
+
+  host.appendChild(svg);
+}
+
+/* ------------------------------------------------------------ scatter */
+function renderScatter(v) {
+  const host = $('#scatter'); host.innerHTML = '';
+  const pts = v.visible.filter((r) => r.sustain != null && r.launchMean > 0);
+  if (pts.length < 2) { host.appendChild(el('p', { class: 'empty', text: 'Not enough bots in this window.' })); return; }
+
+  const W = 1000, H = 420, M = { t: 16, r: 26, b: 52, l: 58 };
+  const pw = W - M.l - M.r, ph = H - M.t - M.b;
+  const lx = pts.map((p) => Math.log10(p.launchMean));
+  const ly = pts.map((p) => Math.log10(Math.max(0.002, p.sustain)));
+  const x0 = Math.min(...lx) - .12, x1 = Math.max(...lx) + .12;
+  const y0 = Math.min(...ly) - .1, y1 = Math.max(...ly) + .1;
+  const X = (val) => M.l + ((Math.log10(val) - x0) / (x1 - x0)) * pw;
+  const Y = (val) => M.t + ph - ((Math.log10(Math.max(0.002, val)) - y0) / (y1 - y0)) * ph;
+
+  const svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, style: 'width:100%;height:auto;display:block', role: 'img', 'aria-label': 'Launch pace against sustain' });
+
+  [.005, .01, .02, .05, .1, .2, .5, 1].forEach((g) => {
+    if (Math.log10(g) < y0 || Math.log10(g) > y1) return;
+    svg.appendChild(svgEl('line', { x1: M.l, x2: W - M.r, y1: Y(g), y2: Y(g), stroke: 'var(--grid)', 'stroke-width': '1' }));
+    const t = svgEl('text', { x: M.l - 8, y: Y(g) + 3.5, 'text-anchor': 'end', class: 'axis-label' });
+    t.textContent = (g * 100).toFixed(g < .05 ? 1 : 0) + '%';
+    svg.appendChild(t);
+  });
+  for (let e = Math.ceil(x0); e <= x1; e++) {
+    const xv = Math.pow(10, e);
+    svg.appendChild(svgEl('line', { x1: X(xv), x2: X(xv), y1: M.t, y2: M.t + ph, stroke: 'var(--grid)', 'stroke-width': '1' }));
+    const t = svgEl('text', { x: X(xv), y: M.t + ph + 18, 'text-anchor': 'middle', class: 'axis-label' });
+    t.textContent = fmt(xv) + '/d';
+    svg.appendChild(t);
+  }
+  svg.appendChild(svgEl('line', { x1: M.l, x2: W - M.r, y1: M.t + ph, y2: M.t + ph, stroke: 'var(--axis)', 'stroke-width': '1' }));
+
+  const med = curMedian();
+  if (Math.log10(med) > y0 && Math.log10(med) < y1) {
+    svg.appendChild(svgEl('line', { x1: M.l, x2: W - M.r, y1: Y(med), y2: Y(med), stroke: 'var(--axis)', 'stroke-width': '1' }));
+    const t = svgEl('text', { x: W - M.r - 4, y: Y(med) - 6, 'text-anchor': 'end', class: 'axis-label' });
+    t.textContent = 'account median ' + pctS(med);
+    svg.appendChild(t);
+  }
+
+  const xt = svgEl('text', { x: M.l + pw / 2, y: H - 10, 'text-anchor': 'middle', class: 'axis-title' });
+  xt.textContent = 'Week-1 ' + metricLabel() + ' per day (log)';
+  svg.appendChild(xt);
+  const yt = svgEl('text', { x: 14, y: M.t + ph / 2, 'text-anchor': 'middle', class: 'axis-title', transform: 'rotate(-90 14 ' + (M.t + ph / 2) + ')' });
+  yt.textContent = 'Sustain: ' + curWindow().label.replace(/ \(.*\)/, '') + ' vs week 1 (log)';
+  svg.appendChild(yt);
+
+  pts.forEach((p) => {
+    const g = svgEl('g', { style: 'cursor:pointer' });
+    g.appendChild(svgEl('circle', { cx: X(p.launchMean), cy: Y(p.sustain), r: '13', fill: 'transparent' }));
+    g.appendChild(svgEl('circle', {
+      cx: X(p.launchMean), cy: Y(p.sustain), r: '5.5',
+      fill: 'var(--series-1)', stroke: 'var(--surface-1)', 'stroke-width': '2'
+    }));
+    g.addEventListener('mousemove', (e) => showTip(e, p.bot.name, tipRows(p)));
+    g.addEventListener('mouseleave', hideTip);
+    g.addEventListener('click', () => toggleSelect(p.bot.id));
+    svg.appendChild(g);
+  });
+
+  // label the extremes only
+  const label = new Set();
+  pts.slice().sort((a, b) => b.sustain - a.sustain).slice(0, 3).forEach((p) => label.add(p));
+  pts.slice().sort((a, b) => b.launchMean - a.launchMean).slice(0, 2).forEach((p) => label.add(p));
+  pts.slice().sort((a, b) => a.sustain - b.sustain).slice(0, 2).forEach((p) => label.add(p));
+  label.forEach((p) => {
+    const px = X(p.launchMean), py = Y(p.sustain);
+    const nm = p.bot.name.length > 24 ? p.bot.name.slice(0, 23) + '…' : p.bot.name;
+    const right = px + 10 + nm.length * 5.5 < W - M.r;
+    const t = svgEl('text', { x: right ? px + 10 : px - 10, y: py + 3.5, class: 'axis-label', fill: 'var(--ink-2)', 'text-anchor': right ? 'start' : 'end' });
+    t.textContent = nm;
+    svg.appendChild(t);
+  });
+
+  host.appendChild(svg);
+
+  /* Two correlations, because they say different things. The ratio has week-1
+     in its denominator, which biases it negative — so a positive figure there
+     means big launches genuinely decay more slowly, not merely start higher. */
+  const r = pearson(lx, ly);
+  const rAbs = pearson(lx, pts.map((p) => Math.log10(Math.max(1, p.sustainRate))));
+  const band = (x) => {
+    const a = Math.abs(x);
+    return a < 0.2 ? 'no relationship' : a < 0.45 ? 'a modest relationship'
+      : a < 0.7 ? 'a clear relationship' : 'a very strong relationship';
+  };
+  $('#scatterNote').textContent =
+    'Across these ' + pts.length + ' bots, week-1 pace against sustain gives r = ' + r.toFixed(2) + ' — ' + band(r) + '. ' +
+    'Against absolute volume in the same window, r = ' + rAbs.toFixed(2) + ' (' + band(rAbs) + '). ' +
+    (r > 0.3
+      ? 'Sustain has week-1 in its denominator, so this measure is biased toward showing no link or a negative one. ' +
+        'Getting a positive figure anyway means the bigger launches genuinely decay more slowly — the opening week is not just a spike to be discounted, it predicts the rest.'
+      : r < -0.3
+        ? 'Bigger launches fall off harder, so a large opening week really is borrowed traffic.'
+        : 'How big a bot opens tells you little about whether it lasts.');
+}
+
+function pearson(a, b) {
+  const n = a.length, ma = mean(a), mb = mean(b);
+  let s = 0, sa = 0, sb = 0;
+  for (let i = 0; i < n; i++) { s += (a[i] - ma) * (b[i] - mb); sa += (a[i] - ma) ** 2; sb += (b[i] - mb) ** 2; }
+  return (sa && sb) ? s / Math.sqrt(sa * sb) : 0;
+}
+
+/* ---------------------------------------------------------- shape grid */
+function renderSparks(v) {
+  const box = $('#sparks'); box.innerHTML = '';
+  const list = v.visible.filter((r) => r.curve).sort((a, b) => (b.sustain == null ? -1 : b.sustain) - (a.sustain == null ? -1 : a.sustain));
+  if (!list.length) { box.appendChild(el('p', { class: 'empty', text: 'Nothing matches these filters.' })); return; }
+
+  const W = 200, H = 44, FLOOR = 0.004;
+  const maxDay = Math.max(...list.map((r) => r.n - 1));
+  list.forEach((r) => {
+    const X = (i) => (i / Math.max(1, maxDay)) * W;
+    const Y = (val) => {
+      const c = Math.max(FLOOR, Math.min(1.4, val));
+      return H - ((Math.log10(c) - Math.log10(FLOOR)) / (Math.log10(1.4) - Math.log10(FLOOR))) * (H - 3) - 1.5;
+    };
+    let d = '';
+    for (let i = 0; i < r.n; i++) d += (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(r.curve[i]).toFixed(1);
+    const color = r.cls ? r.cls.color : 'var(--cls-na)';
+
+    const svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, preserveAspectRatio: 'none', 'aria-hidden': 'true' });
+    svg.appendChild(svgEl('path', { d: d + 'L' + X(r.n - 1) + ' ' + H + 'L0 ' + H + 'Z', fill: color, 'fill-opacity': '0.15' }));
+    svg.appendChild(svgEl('line', { x1: 0, x2: W, y1: Y(1), y2: Y(1), stroke: 'var(--axis)', 'stroke-width': '1' }));
+    svg.appendChild(svgEl('path', { d, fill: 'none', stroke: color, 'stroke-width': '2', 'stroke-linejoin': 'round' }));
+
+    const on = STATE.selected.includes(r.bot.id);
+    const card = el('button', { class: 'spark', type: 'button', 'aria-pressed': String(on) }, [
+      el('div', { class: 'nm', text: r.bot.name }),
+      svg,
+      el('div', { class: 'meta' }, [
+        el('span', {}, [chipFor(r)]),
+        el('span', { text: fmt(r.launchMean) + '/d → ' + (r.sustain == null ? '—' : pctS(r.sustain, 1)) })
+      ])
+    ]);
+    card.addEventListener('click', () => toggleSelect(r.bot.id));
+    card.addEventListener('mousemove', (e) => showTip(e, r.bot.name, tipRows(r)));
+    card.addEventListener('mouseleave', hideTip);
+    box.appendChild(card);
+  });
+}
+
+function chipFor(r) {
+  if (!r.cls) return el('span', { class: 'chip lightink', style: 'background:var(--cls-na)', text: 'too young' });
+  return el('span', { class: 'chip' + (r.cls.light ? ' lightink' : ''), style: 'background:' + r.cls.color, text: r.cls.id });
+}
+
+/* ---------------------------------------------------------------- table */
+function renderTable(v) {
+  const t = $('#table'); t.innerHTML = '';
+  const cols = [
+    ['name', 'Character'], ['cls', 'Class'],
+    ['launchMean', 'Wk-1 / day'], ['sustain', 'Sustain'],
+    ...STAGES.map((s) => [s.id, s.label]),
+    ['current', 'Last 30 / day'], ['endurance', 'Endurance'], ['repeat', 'Chats/user'], ['depth', 'Msgs/chat'],
+    ['convert', 'Convert'], ['total', 'Tracked'], ['siteMessages', 'Site total'], ['n', 'Age']
+  ];
+  const LOY = { repeat: 1, depth: 1, convert: 1 };
+  const { key, dir } = STATE.tableSort;
+  const val = (r) => {
+    if (key === 'name') return r.bot.name.toLowerCase();
+    if (key === 'cls') return r.cls ? CLASSES.indexOf(r.cls) : -1;
+    if (STAGES.some((s) => s.id === key)) return r.stages[key] == null ? -Infinity : r.stages[key];
+    if (LOY[key]) return r.loyalty[key] == null ? -Infinity : r.loyalty[key];
+    if (key === 'siteMessages') return r.site.messages;
+    const x = r[key];
+    return x == null ? -Infinity : x;
+  };
+  const sorted = v.visible.slice().sort((a, b) => {
+    const x = val(a), y = val(b);
+    return typeof x === 'string' ? dir * x.localeCompare(y) : dir * (x - y);
+  });
+
+  const tr = el('tr');
+  cols.forEach(([k, label]) => {
+    const th = el('th', { text: label, scope: 'col' });
+    if (k === key) th.setAttribute('aria-sort', dir === 1 ? 'ascending' : 'descending');
+    th.addEventListener('click', () => { STATE.tableSort = { key: k, dir: key === k ? -dir : (k === 'name' ? 1 : -1) }; render(); });
+    tr.appendChild(th);
+  });
+  t.appendChild(el('thead', {}, [tr]));
+
+  const tb = el('tbody');
+  sorted.forEach((r) => {
+    const row = el('tr');
+    const nm = el('td', { class: 'name' });
+    nm.appendChild(document.createTextNode(r.bot.name));
+    nm.addEventListener('click', () => toggleSelect(r.bot.id));
+    row.appendChild(nm);
+    row.appendChild(el('td', {}, [chipFor(r)]));
+    row.appendChild(el('td', { text: fmt(r.launchMean) }));
+    row.appendChild(el('td', { text: pctS(r.sustain, 1), class: r.sustain == null ? 'na' : '' }));
+    STAGES.forEach((s) => row.appendChild(el('td', { text: pctS(r.stages[s.id], 1), class: r.stages[s.id] == null ? 'na' : '' })));
+    row.appendChild(el('td', { text: fmt(r.current) }));
+    row.appendChild(el('td', { text: fmt(r.endurance), class: r.endurance == null ? 'na' : '' }));
+    row.appendChild(el('td', { text: r.loyalty.repeat == null ? '—' : r.loyalty.repeat.toFixed(2), class: r.loyalty.repeat == null ? 'na' : '' }));
+    row.appendChild(el('td', { text: r.loyalty.depth == null ? '—' : r.loyalty.depth.toFixed(1), class: r.loyalty.depth == null ? 'na' : '' }));
+    row.appendChild(el('td', { text: pctS(r.loyalty.convert, 0), class: r.loyalty.convert == null ? 'na' : '' }));
+    row.appendChild(el('td', { text: fmt(r.total) }));
+    row.appendChild(el('td', { text: fmt(r.site.messages) }));
+    row.appendChild(el('td', { text: r.n + 'd' }));
+    tb.appendChild(row);
+  });
+  t.appendChild(tb);
+
+  $('#tableNote').textContent =
+    'Tracking runs ' + shortDate(RAW.windowStart) + ' to ' + shortDate(lastDay()) +
+    '. A stage is blank when the bot has not covered at least half of it — a 40-day-old bot gets no "d36–90" figure rather than one built from five days.';
+
+  // the bots that cannot take part, stated plainly rather than dropped silently
+  const ex = $('#excluded'); ex.innerHTML = '';
+  if (!v.excluded.length) { ex.classList.add('hidden'); return; }
+  ex.classList.remove('hidden');
+  /* Two distinct reasons a bot has no measurable launch week, and conflating
+     them misstates the data: one had its history cut off, the other simply sat
+     quiet for a while after going up. */
+  const truncated = v.excluded.filter((r) => !r.hasLaunch && r.bot.start === RAW.windowStart && r.bot.birth < RAW.windowStart);
+  const quiet = v.excluded.filter((r) => !r.hasLaunch && !truncated.includes(r));
+  const small = v.excluded.filter((r) => r.hasLaunch);
+  const names = (list) => list.map((r) => r.bot.name + ' (' + fmt(r.current) + '/d)').join(' · ');
+
+  ex.appendChild(el('summary', { text: v.excluded.length + ' bots excluded from the launch comparison — see why' }));
+  if (truncated.length) {
+    ex.appendChild(el('p', { class: 'note', text: truncated.length + ' shipped before tracking began on ' + shortDate(RAW.windowStart) + ', so their week one was never recorded and their history is genuinely cut off. Their current pull is still real: ' + names(truncated) }));
+  }
+  if (quiet.length) {
+    ex.appendChild(el('p', { class: 'note', text: quiet.length + ' went up earlier but drew no traffic until well after launch, so there is no launch spike to measure against — nothing is missing, there was simply nothing there: ' + names(quiet) }));
+  }
+  // A bot younger than a full launch week has no week-1 average at all, which
+  // is not the same as having one that came in under the floor.
+  const tooNew = small.filter((r) => r.launchMean == null);
+  const belowFloor = small.filter((r) => r.launchMean != null);
+  if (tooNew.length) {
+    ex.appendChild(el('p', { class: 'note', text: tooNew.length + ' are younger than a full ' + LAUNCH_DAYS + '-day launch week, so there is nothing to average yet: ' + tooNew.map((r) => r.bot.name + ' (' + r.n + 'd old)').join(' · ') }));
+  }
+  if (belowFloor.length) {
+    ex.appendChild(el('p', { class: 'note', text: belowFloor.length + ' opened below the ' + STATE.minvol + '/day floor: ' + belowFloor.map((r) => r.bot.name + ' (' + fmt(r.launchMean) + '/d)').join(' · ') }));
+  }
+}
+
+function lastDay() {
+  let m = RAW.windowStart;
+  RAW.bots.forEach((b) => { const e = addDays(b.start, b.series.length - 1); if (e > m) m = e; });
+  return m;
+}
+
+/* ==========================================================================
+   Controls
+   ========================================================================== */
+
+function toggleSelect(id) {
+  const i = STATE.selected.indexOf(id);
+  if (i >= 0) STATE.selected.splice(i, 1);
+  else { if (STATE.selected.length >= 6) STATE.selected.shift(); STATE.selected.push(id); }
+  render();
+}
+
+function wireControls() {
+  const winSel = $('#window');
+  winSel.innerHTML = '';
+  WINDOWS.forEach((w) => winSel.appendChild(el('option', { value: w.id, text: w.label })));
+  winSel.value = STATE.window;
+
+  freezeMedians();
+  calibrate();
+
+  const bind = (sel, key, cast) => {
+    const n = $(sel); n.value = STATE[key];
+    n.addEventListener('input', () => { STATE[key] = cast ? cast(n.value) : n.value; render(); });
+  };
+  bind('#metric', 'metric');
+  bind('#window', 'window');
+  bind('#minvol', 'minvol', Number);
+  bind('#q', 'q');
+
+  $('#ageTabs').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-w]');
+    if (!b) return;
+    STATE.ageWeight = Number(b.dataset.w);
+    $$('#ageTabs button').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
+    render();
+  });
+
+  $('#curveTabs').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-mode]');
+    if (!b) return;
+    STATE.curveMode = b.dataset.mode;
+    $$('#curveTabs button').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
+    render();
+  });
+
+  $('#csvBtn').addEventListener('click', exportCsv);
+}
+
+function exportCsv() {
+  const v = rows();
+  const head = ['name', 'class', 'week1_per_day', 'week1_total', 'sustain_' + STATE.window,
+    ...STAGES.map((s) => s.label.replace(/[–+]/g, '_')), 'last30_per_day',
+    'endurance_score', 'chats_per_user', 'msgs_per_chat', 'viewer_to_chatter', 'tracked_total',
+    'site_messages_all_time', 'site_chats_all_time', 'pre_window_estimate', 'age_days', 'launch_date', 'tags'];
+  const lines = [head.join(',')];
+  v.visible.forEach((r) => {
+    lines.push([
+      JSON.stringify(r.bot.name), r.cls ? r.cls.id : '',
+      r.launchMean == null ? '' : r.launchMean.toFixed(1),
+      r.launchTotal == null ? '' : r.launchTotal,
+      r.sustain == null ? '' : r.sustain.toFixed(4),
+      ...STAGES.map((s) => r.stages[s.id] == null ? '' : r.stages[s.id].toFixed(4)),
+      r.current == null ? '' : r.current.toFixed(1),
+      r.endurance == null ? '' : r.endurance.toFixed(1),
+      r.loyalty.repeat == null ? '' : r.loyalty.repeat.toFixed(3),
+      r.loyalty.depth == null ? '' : r.loyalty.depth.toFixed(2),
+      r.loyalty.convert == null ? '' : r.loyalty.convert.toFixed(3),
+      r.total, r.site.messages, r.site.chats,
+      r.site.preWindow == null ? '' : Math.round(r.site.preWindow),
+      r.n, r.bot.birth, JSON.stringify(r.bot.tags.join(' '))
+    ].join(','));
+  });
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+  const a = el('a', { href: URL.createObjectURL(blob), download: 'jai-launch-sustain-' + STATE.metric + '-' + STATE.window + '.csv' });
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+boot();
+</script>
+</body>
+</html>
